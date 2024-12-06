@@ -11,25 +11,22 @@ N.B. requires scores stepsize = 1
 import numpy as np
 import matplotlib.pyplot as plt
 
-p = [0, 4/6, 0, 0, 0, 1/6]
-x = np.arange(0, 50)
-
+v = np.arange(0, 50)  # score outcomes to consider
+dv = [1, 5]  # scores that may be gained
+p = [4/6, 1/6]  # probability to gain dv[i] points
 
 def expected_result(t):
-    """
-    S[i]: probability to reach state i
-    P[i]: probability to end at state i
-    """
-    S = np.zeros(x.shape); S[0] = 1
-    for i in x:
-        if t > i-1 >= 0:
-            S[i] += S[i-1] * p[1]
-        if t > i-5 >= 0:
-            S[i] += S[i-5] * p[5]
+    # Survival probability
+    P = np.zeros(v.shape); P[0] = 1
+    for vi in v:
+        for dvi, pi in zip(dv, p):
+            if 0 <= vi-dvi < t:
+                P[vi] += P[vi-dvi] * pi
 
-    P = S.copy()
-    P[:t] = 0  # can't end below t by design
-    return P@x
+    # Destination probability
+    P[:t] = 0  # can't end up below t
+    expected_score = P@v
+    return expected_score
 
 
 t = np.arange(0, 50)
@@ -41,7 +38,7 @@ y = np.array(y)
 i_max = np.argmax(y)
 t_max = t[i_max]
 y_max = y[i_max]
-print(f"Time to stop: t={t_max}")  # 9
+print(f"Result: play until score={t_max}")  # 9
 
 plt.plot(t, y)
 plt.scatter(t_max, y_max, c='r')
