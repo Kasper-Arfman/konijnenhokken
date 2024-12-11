@@ -1,4 +1,4 @@
-from models.engine import Engine
+from models import Engine
 
 def main():
     game = Engine(num_users=2)

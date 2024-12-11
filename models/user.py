@@ -1,4 +1,4 @@
-from models.ui import UI
+from models import UI
 
 class User:
 
