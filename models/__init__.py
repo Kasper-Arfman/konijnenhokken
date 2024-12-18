@@ -1,4 +1,2 @@
-from .gamestate import UserGameState
-from .ui import UI
-from .user import User
-from .engine import Engine
+from .game_state import GameState
+from .user_interface import UI

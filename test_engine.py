@@ -1,7 +1,16 @@
-from models import Engine
+from src import Engine, User, GraphicalUI, BotUser
+
+import random
+random.seed(1)
 
 def main():
-    game = Engine(num_users=2)
+
+    users = [
+        BotUser(1, None),
+        BotUser(2, None)
+        ]
+
+    game = Engine(users)
     game.play(3)
 
 if __name__ == "__main__":
