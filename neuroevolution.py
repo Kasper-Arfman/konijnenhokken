@@ -44,7 +44,7 @@ from neat.nn.feed_forward import FeedForwardNetwork
 
 from src import Engine, BotUser, BotUI, CommandUI
 
-NUM_TURNS = 1000
+NUM_TURNS = 200
 
 Genomes = List[Tuple[int, DefaultGenome]]
 
