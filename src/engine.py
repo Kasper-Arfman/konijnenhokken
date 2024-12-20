@@ -73,7 +73,10 @@ class Engine:
         rabbits, cages = user.decide_allocation(gs.read_only())
         status, message = self.validate_allocation(gs, rabbits, cages)
         while not status:
-            user.ui.error_message(user, message)
+            user.ui.error_message(message)
+
+            exit()  # remove this later!
+
             rabbits, cages = user.decide_allocation(gs.read_only())
             status, message = self.validate_allocation(gs, rabbits, cages)
 
@@ -121,10 +124,10 @@ class Engine:
     def run_completed(self, gs: GameState):
         return not gs.dice_remaining
 
-    def game_over(self):
-        print(f"\nGame Over")
-
-        for user in self.users:
-            gs = self.gs[user]
-            print(f"user {user.i}: {gs.game_score} points")
+    def game_over(self, verbose=False):
+        if verbose:
+            print(f"\nGame Over")
+            for user in self.users:
+                gs = self.gs[user]
+                print(f"user {user.i}: {gs.game_score} points")
 

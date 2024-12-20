@@ -138,7 +138,7 @@ class GraphicalUI(UI):
         print(f' => Oh dear, no rabbits')
         self.gs = gs
         self.selection_state(0)
-        # time.sleep(1)
+        time.sleep(1)
 
     def on_run_completed(self, gs: GameState=None):
         print(f" => Nice, you finished the dice!")
