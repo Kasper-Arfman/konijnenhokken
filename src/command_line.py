@@ -4,7 +4,8 @@ from models import UI, GameState
 class CommandUI(UI):
 
     def on_point_allocation(self, gs: GameState=None):
-        print(gs.run_score, gs.turn_score, gs.game_score)
+        # print(gs.run_score, gs.turn_score, gs.game_score)
+        return
 
     def on_dice_roll(self, gs: GameState=None):
         roll = gs.roll
@@ -15,12 +16,15 @@ class CommandUI(UI):
 
     def on_turn_lost(self, gs: GameState=None):
         print(f' => Oh dear, no rabbits')
+        print(f"{gs.game_score}")
 
     def on_run_completed(self, gs: GameState=None):
-        print(f" - Nice, you finished the dice!")
+        # print(f" - Nice, you finished the dice!")
+        return
 
     def on_next_roll(self, gs: GameState=None):
-        print(f" - Going to roll again...")
+        # print(f" - Going to roll again...")
+        return
 
     def on_end_turn(self, gs: GameState=None):
         print(f" => Ending the turn now")
@@ -29,6 +33,7 @@ class CommandUI(UI):
     def on_decide_allocation(self, gs: GameState=None):
         rabbits = int_selection('Choose rabbits', (1, 2, 3))
         cages = int_selection('Choose cages', (2, 3, 4, 5))
+        # print(f"{rabbits = } {cages = }")
         return rabbits, cages
 
     def on_decide_continue(self, gs: GameState=None):

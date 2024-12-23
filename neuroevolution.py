@@ -39,36 +39,39 @@ import neat
 from neat.config import Config
 from neat.genome import DefaultGenome
 from typing import List, Tuple
+import pickle
 
 from neat.nn.feed_forward import FeedForwardNetwork
+from neat.threaded import ThreadedEvaluator
 
-from src import Engine, BotUser, BotUI, CommandUI
+from src import Engine, BotUser
 
-NUM_TURNS = 200
+NUM_TURNS = 1000
 
 Genomes = List[Tuple[int, DefaultGenome]]
+hiscore = 0
 
 def eval_genomes(genomes: Genomes, config: Config):
-    """Compute the fitness of every genome and store it in genome.fitness"""
-
-    
-
     for genome_id, genome in genomes:
-        genome.fitness = 0
+        genome.fitness = eval_genome(genome, config)
 
-        # Play the game with each genome 1000 times
-        net = FeedForwardNetwork.create(genome, config)
-        user = BotUser(genome_id, net=net, ui=None, verbose=False)
-        game = Engine([user])
-        game.play(NUM_TURNS)
+def eval_genome(genome: DefaultGenome, config: Config):
+    net = FeedForwardNetwork.create(genome, config)
+    user = BotUser(net=net, verbose=False)
+    game = Engine([user])
+    game.play(NUM_TURNS)
 
-        # Evaluate the fitness as the average score
-        genome.fitness = game.gs[user].game_score / NUM_TURNS
+    # Evaluate the fitness as the average score
+    fitness = game.gs[user].game_score / NUM_TURNS
 
+    global hiscore
+    if fitness > hiscore:
+        hiscore = fitness
+        with open("best.pkl", 'wb') as f:
+            pickle.dump(genome, f)
+        print(f"New {hiscore = }")
 
-
-        
-
+    return fitness
 
 def run_neat(config_file):
     config = Config(
@@ -82,19 +85,12 @@ def run_neat(config_file):
     p = neat.Population(config)
 
     p.add_reporter(neat.StdOutReporter(True))
-    # p.add_reporter(neat.StatisticsReporter())
 
-    # Run for up to 50 generations.
-    winner: DefaultGenome = p.run(eval_genomes, 100)
+    evaluator = eval_genomes
+    evaluator = ThreadedEvaluator(3, eval_genome).evaluate
+
+    winner: DefaultGenome = p.run(evaluator, 10_000)
     print(print(f"Winner: {winner.fitness}"))
-
-    import pickle
-    with open("best.pkl", 'wb') as f:
-        pickle.dump(winner, f)
-
-    # show final stats
-    # print(f'\nBest genome:\n{type(winner)}')
-
 
 if __name__ == '__main__':
     from os import path

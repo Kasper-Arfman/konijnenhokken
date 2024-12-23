@@ -1,28 +1,18 @@
+import numpy as np
+import random
+from collections import Counter
+from neat.nn import FeedForwardNetwork
+from scipy.special import softmax
 from models import UI, GameState
 from src.command_line import CommandUI
 from src.bot_ui import BotUI
-import numpy as np
-from collections import Counter
-from neat.nn.feed_forward import FeedForwardNetwork
 
-class User:
+def weighted_draw(arr, default=0):
+    if not arr: return default
 
-    def __init__(self, i, ui: UI=CommandUI):
-        self.i = i
-        self.ui = ui()
-
-    def decide_allocation(self, gs: GameState):
-        rabbits, cages = self.ui.on_decide_allocation(gs)
-        return rabbits, cages
-
-    def decide_continue(self, gs: GameState):
-        choice = self.ui.on_decide_continue(gs)
-        return choice
-    
-    def __repr__(self):
-        return f"User({self.i})"
-
-
+    arr = softmax(arr)
+    i = random.choices(range(arr.size), weights=arr, k=1)[0]
+    return i
 
 def encode_input(gs: GameState, verbose=False):
 
@@ -59,7 +49,6 @@ def encode_input(gs: GameState, verbose=False):
         print(f"{gs.cages = }:\n - {cages}")
         print(f"{gs.roll = }:\n 1: {b1}\n 2: {b2}\n 3: {b3}\n 4: {b4}\n 5: {b5}\n 6: {b6}")
     return score + rabbit + cages + board
-
 
 def decode_output(nodes: list, gs: GameState, verbose=0):
     roll = Counter(gs.roll)
@@ -119,30 +108,88 @@ def decode_output(nodes: list, gs: GameState, verbose=0):
 
     return rabbits, cages, roll_again
 
+def decode_output_mc(nodes: list, gs: GameState, verbose=0):
+    roll = Counter(gs.roll)
 
+    # == Rabbits
+    n1 = roll.get(1, 0)
+    n2 = roll.get(2, 0)
+    r1 = weighted_draw(nodes[0: 0+n1])
+    r2 = weighted_draw(nodes[8: 8+n2])
+    # - ensure atleast one rabbit
+    if r1 == r2 == 0:
+        if n1:  r1 += 1
+        else:   r2 += 1
+
+    rabbits = [1]*r1 + [2]*r2
+    roll[1] -= r1
+    roll[2] -= r2
+
+    # == Cages
+    # - Check which cages are allowed
+    c = Counter(gs.cages)
+    pool = c + roll
+    for i, amt in enumerate(range(2, 6)):
+        if amt not in pool:
+            break
+    valids = nodes[16: 16+i]
+
+    # - draw from valid cages
+    i_cages = weighted_draw(valids)
+    cages = [2, 3, 4, 5][:i_cages]
+    cages = [x for x in cages if x not in c]  # excludes what you already own
+
+    # == Roll again
+    yes = nodes[20]
+    roll_again = bool(weighted_draw([1-yes, yes]))
+
+    if verbose:
+        print(f"\n==== Net Output ====")
+        print(f"{[round(x, 1) for x in nodes]}")
+        print("Rabbits1: {}".format([round(x, 1) for x in nodes[0: 8]]))
+        print("Rabbits2: {}".format([round(x, 1) for x in nodes[8: 16]]))
+        if verbose == 1:
+            print(f" => {rabbits}")
+            print(f"Cages: {[round(x, 1) for x in nodes[16: 20]]}")
+            print(f" => {cages}")
+        if verbose == 2:
+            print(f"Roll Again?: {nodes[20]:.1f} => {roll_again}")
+
+    return rabbits, cages, roll_again
+
+
+class User:
+
+    def __init__(self, ui: UI=None):
+        self.ui = ui or CommandUI()
+
+    def decide_allocation(self, gs: GameState):
+        rabbits, cages = self.ui.on_decide_allocation(gs)
+        return rabbits, cages
+
+    def decide_continue(self, gs: GameState):
+        choice = self.ui.on_decide_continue(gs)
+        return choice
+    
+    def __repr__(self):
+        return f"User({self.i})"
 
 
 class BotUser(User):
 
-    def __init__(self, i, ui: UI=None, net: FeedForwardNetwork=None, verbose=False):
-        self.i = i
+    def __init__(self, ui: UI=None, net: FeedForwardNetwork=None, verbose=False):
         self.ui = ui() if ui else BotUI()
-        self.strategy=net
+        self.strategy = net
         self.verbose = verbose
 
     def decide_allocation(self, gs: GameState):
         v_in = encode_input(gs, verbose=self.verbose)
         v_out = self.strategy.activate(v_in)
-        # v_out = np.random.uniform(0, 1, 2*8+4+1)  # activate network
-        rabbits, cages, _ = decode_output(v_out, gs, verbose=1 if self.verbose else 0)
+        rabbits, cages, self.roll_again = decode_output_mc(v_out, gs, verbose=1 if self.verbose else 0)
         return rabbits, cages
 
     def decide_continue(self, gs: GameState):
-        v_in = encode_input(gs, verbose=self.verbose)
-        v_out = self.strategy.activate(v_in)
-        # v_out = np.random.uniform(0, 1, 2*8+4+1)  # activate network
-        _, _, roll_again = decode_output(v_out, gs, verbose=2 if self.verbose else 0)
-        return roll_again
+        return self.roll_again
     
     def __repr__(self):
         return f"Bot({self.i})"
