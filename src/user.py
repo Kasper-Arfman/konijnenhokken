@@ -201,7 +201,6 @@ class QBot(User):
     def __init__(self, ui: UI=None, policy: dict=None, verbose=False):
         self.ui = ui if ui else BotUI()
         self.policy = policy
-        print(len(self.policy))
         self.verbose = verbose   
 
     @staticmethod

@@ -33,7 +33,6 @@ def play_value(state):
      - For any dice roll, consider all possible allocations
     """
     if state not in Q:
-
         # If no dice are left, start a new turn
         if sum(state[1:]) == NUM_DICE:
             Q[state] = play_value(next_turn(state))
@@ -98,22 +97,14 @@ def next_turn(state):
     return t, 0, 0, 0
 
 def main():
+    # Solve Konijnenhokken (!)
     max_score = E((0, 0, 0, 0))
     print(f"{max_score = }")
 
-    # Generate all states and compute the stop and start 
+    # Export the solution (play values)
+    import pickle
     global Q
     Q = dict(sorted(Q.items()))
-
-
-    # for k, v in Q.items():
-    #     if k[0] > 7:  break
-
-    #     print(k, v)
-
-
-    # Test a bot that applies this Q
-    import pickle
     with open('library.pkl', 'wb') as f:
         pickle.dump(Q, f)
 
