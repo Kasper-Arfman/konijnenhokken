@@ -6,6 +6,15 @@ from scipy.special import softmax
 from models import UI, GameState
 from src.command_line import CommandUI
 from src.bot_ui import BotUI
+import pickle
+import numpy as np
+import neat
+import os
+import random
+from collections import Counter
+from functools import cache
+import neat.threaded
+import pickle
 
 def weighted_draw(arr, default=0):
     if not arr: return default
@@ -172,7 +181,7 @@ class User:
         return choice
     
     def __repr__(self):
-        return f"User({self.i})"
+        return f"User()"
 
 
 class BotUser(User):
@@ -192,5 +201,130 @@ class BotUser(User):
         return self.roll_again
     
     def __repr__(self):
-        return f"Bot({self.i})"
+        return f"Bot()"
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class ValueBot(User):
+
+    def __init__(self, ui: UI=None, net=None, verbose=False):
+        self.ui = ui if ui else BotUI()
+        self.verbose = verbose   
+
+        self.state_value = {s: v for s, v in zip(self.iter_states(), net)}
+
+    @staticmethod
+    def iter_states():
+        for turn_score in range(100):
+            for r1 in range(8):
+                for r2 in range(8-r1):
+                    for c in range(min(8-r1-r2, 5)):
+                        yield (turn_score, r1, r2, c)
+
+    @staticmethod
+    def possible_states(r1, r2, c, roll: tuple):
+        roll = Counter(roll)
+        states = set()
+        for d1 in range(roll[1]+1):
+            for d2 in range(roll[2]+1):
+                # Must add atleast one rabbit
+                if (d1, d2) == (0, 0):  continue
+
+                # 1: Add only rabbits
+                states.add((r1+d1, r2+d2, c))
+
+                # In case all 2s are used up
+                if not (roll[2] - d2):  continue
+
+                # 2: Add cages as well
+                for dc, cage in enumerate(range(c+2, 6), 1):
+                    if cage not in roll:  break
+                    # Add this possibility
+                    states.add((r1+d1, r2+d2, c+dc))
+
+        return states
+
+    @staticmethod
+    def state_difference(a, b):
+        """Format  the state difference like
+        
+        [1, 1, 2], [3, 4, 5]
+        """
+
+        _, Ar1, Ar2, Ac = a
+        _, Br1, Br2, Bc = b
+        dr1 = Ar1 - Br1
+        dr2 = Ar2 - Br2
+        dc  = Ac  - Bc
+
+        rabbits = [1]*dr1 + [2]*dr2
+        cages = [i+1 for i in range(Bc+1, Ac+1)]
+        # print(f" state diff: {rabbits = } {cages = }")
+
+        return rabbits, cages
+
+
+
+        return dr1, dr2, dc
+    
+    def decide_allocation(self, gs: GameState):
+        """Find all the states that can be reached from here
+        Pick the one with the largest score."""
+        # Find all the possible destination states
+        # - the turn score remains unchanged
+        rabbits = gs.rabbits
+        cages = gs.cages
+
+        t = gs.turn_score
+        r1 = rabbits.count(1)
+        r2 = rabbits.count(2)
+        c = len(cages)
+        state = (t, r1, r2, c)
+
+        roll = tuple(gs.roll)
+
+        # print(f"{state = } {roll = }")
+
+
+        dest = ((t, *s) for s in self.possible_states(r1, r2, c, roll))
+
+        # Find the destination state that has the max value
+        best = max(dest, key=self.state_value.get)
+        # print(f'chose {best = }')
+
+
+        return self.state_difference(best, state)
+
+    def decide_continue(self, gs: GameState):
+        rabbits = gs.rabbits
+        
+        turn_score = gs.turn_score
+        r1 = rabbits.count(1)
+        r2 = rabbits.count(2)
+        c = len(gs.cages)
+        state = (turn_score, r1, r2, c)
+
+        # turn_score, r1, r2, c = state
+        stop = turn_score + (r1 + 2*r2) * (c+1)
+        play = self.state_value[state]
+        return play > stop

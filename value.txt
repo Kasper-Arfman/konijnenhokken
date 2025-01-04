@@ -20,7 +20,7 @@ bias_init_mean          = 0
 bias_init_stdev         = 0
 bias_max_value          = 80.0
 bias_min_value          = 0
-bias_mutate_power       = 1
+bias_mutate_power       = 0.5
 bias_mutate_rate        = 0.8
 bias_replace_rate       = 0.0
 
