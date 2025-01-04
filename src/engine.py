@@ -25,6 +25,7 @@ class Engine:
         """
         for _ in range(rounds):
             for user in self.users:
+                print(f"\nNow playing: {user}")
                 self.take_turn(user)
         self.game_over()
         for user in self.users:

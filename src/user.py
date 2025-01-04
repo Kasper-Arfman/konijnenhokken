@@ -181,7 +181,7 @@ class User:
         return choice
     
     def __repr__(self):
-        return f"User()"
+        return f"Human"
 
 
 class BotUser(User):
@@ -195,13 +195,15 @@ class BotUser(User):
         v_in = encode_input(gs, verbose=self.verbose)
         v_out = self.strategy.activate(v_in)
         rabbits, cages, self.roll_again = decode_output_mc(v_out, gs, verbose=1 if self.verbose else 0)
+        # if self.verbose:
+            # print(f"Picked:")
         return rabbits, cages
 
     def decide_continue(self, gs: GameState):
         return self.roll_again
     
     def __repr__(self):
-        return f"Bot()"
+        return f"BotUser (Neuro)"
     
 
 
@@ -328,3 +330,6 @@ class ValueBot(User):
         stop = turn_score + (r1 + 2*r2) * (c+1)
         play = self.state_value[state]
         return play > stop
+    
+    def __repr__(self):
+        return f"BotUser (Value)"

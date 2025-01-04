@@ -91,17 +91,17 @@ class GraphicalUI(UI):
     """ ==== engine interface ===="""
 
     def on_turn_start(self, gs: GameState=None):
-        print(f"\n\nStarting a new round")
+        print(f" {'Roll':21} {'Rabbits':21} {'Cages':21}")
         self.gs = gs
         self.selection_state(0)
 
     def on_dice_roll(self, gs: GameState=None):
-        print(f'You rolled: {gs.roll}')
+        print(f" {str(gs.roll):21}", end=' ')
         self.gs = gs  # update roll info
         self.selection_state(0)
 
     def on_decide_allocation(self, gs: GameState=None):
-        print('Allocating...')
+        #print('Allocating...')
         self.gs = gs
         self.selection_state(1)
 
@@ -111,17 +111,17 @@ class GraphicalUI(UI):
             self.clock.tick(self.MAX_FPS)
 
         rabbits, cages = self.rabbit_selection.copy(), self.cage_selection.copy()
-        print(f" -> {rabbits = }, {cages = }")
+        #print(f" -> {rabbits = }, {cages = }")
         self.selection_state(0)
         return rabbits, cages
 
     def on_point_allocation(self, gs: GameState=None):
-        print(' - on_point_allocation: ')
+        print(f"{str(gs.rabbits):21} {str(gs.cages):21}")
         self.gs = gs  # update point information
         self.selection_state(0)
 
     def on_decide_continue(self, gs: GameState=None):
-        print(f" - on_decide_continue: ")
+        #print(f" - on_decide_continue: ")
         self.gs = gs
         self.selection_state(3)
 
@@ -135,26 +135,28 @@ class GraphicalUI(UI):
         return roll_again
 
     def on_turn_lost(self, gs: GameState=None):
-        print(f' => Oh dear, no rabbits')
+        print(f'=> Oh dear, no rabbits')
+        print(f"{gs.turn_score} / {gs.game_score}")
         self.gs = gs
         self.selection_state(0)
         time.sleep(1)
 
     def on_run_completed(self, gs: GameState=None):
-        print(f" => Nice, you finished the dice!")
+        #print(f" => Nice, you finished the dice!")
         self.gs = gs
         self.selection_state(0)
 
     def on_next_roll(self, gs: GameState=None):
-        print(f" - Going to roll again...")
+        #print(f" - Going to roll again...")
         self.gs = gs
         self.selection_state(0)
 
     def on_end_turn(self, gs: GameState=None):
-        print(f" => Ending the turn now")
+        #print(f" => Ending the turn now")
+        print(f"{gs.turn_score} / {gs.game_score}")
         self.gs = gs
         self.selection_state(0)
-        print(f"{self.gs.game_score}")
+        #print(f"{self.gs.game_score}")
 
     def on_game_over(self, gs: GameState=None):
         self.gs = gs
@@ -401,10 +403,11 @@ class GraphicalUI(UI):
                 self.screen.blit(text, text.get_rect(center=rect.center))
 
     def error_message(self, message):
+        """"""
         print(f"ERROR: {message}")
 
 
 if __name__ == "__main__":
     import time
     gui = GraphicalUI()
-    print('ended')
+    #print('ended')

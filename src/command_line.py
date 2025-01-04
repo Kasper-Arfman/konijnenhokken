@@ -4,19 +4,19 @@ from models import UI, GameState
 class CommandUI(UI):
 
     def on_point_allocation(self, gs: GameState=None):
-        # print(gs.run_score, gs.turn_score, gs.game_score)
+        print(f"{str(gs.rabbits):21} {str(gs.cages):21}")
         return
 
     def on_dice_roll(self, gs: GameState=None):
-        roll = gs.roll
-        print(f' - Bot rolled: {roll}')
+        """"""
+        print(f" {str(gs.roll):21}", end=' ')
 
     def on_turn_start(self, gs: GameState=None):
-        print(f"\n\nBot starting a new round.")
+        print(f" {'Roll':21} {'Rabbits':21} {'Cages':21}")
 
     def on_turn_lost(self, gs: GameState=None):
-        print(f' => Oh dear, no rabbits')
-        print(f"{gs.game_score}")
+        print(f'=> Oh dear, no rabbits')
+        print(f"{gs.turn_score} / {gs.game_score}")
 
     def on_run_completed(self, gs: GameState=None):
         # print(f" - Nice, you finished the dice!")
@@ -27,8 +27,8 @@ class CommandUI(UI):
         return
 
     def on_end_turn(self, gs: GameState=None):
-        print(f" => Ending the turn now")
-        print(f"{gs.game_score}")
+        #                   .
+        print(f"{gs.turn_score} / {gs.game_score}")
 
     def on_decide_allocation(self, gs: GameState=None):
         rabbits = int_selection('Choose rabbits', (1, 2, 3))

@@ -22,6 +22,7 @@ class UserGameState(GameState):
     def start_turn(self):
         # Get all dice back
         self.dice_remaining = self.total_dice
+        self.turn_score = 0
 
     def roll_dice(self):
         # Update gs.roll
@@ -78,7 +79,7 @@ class UserGameState(GameState):
 
         # Increase game score by turn score, lose turn points
         self.game_score += self.turn_score
-        self.turn_score = 0
+        # self.turn_score = 0
 
         # Lose all rabbits and cages
         self.rabbits = []
