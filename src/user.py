@@ -206,27 +206,6 @@ class BotUser(User):
         return f"BotUser (Neuro)"
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class ValueBot(User):
 
     def __init__(self, ui: UI=None, net=None, verbose=False):
@@ -333,3 +312,31 @@ class ValueBot(User):
     
     def __repr__(self):
         return f"BotUser (Value)"
+    
+
+
+class PerfectBot(User):
+
+    def __init__(self, ui: UI=None, verbose=False):
+        self.ui = ui() if ui else BotUI()
+        self.verbose = verbose
+        self.values = self.load_values()
+
+    @staticmethod
+    def load_values():
+        with open(r'C:\Users\arfma005\Documents\GitHub\konijnenhokken\library.pkl', 'rb') as f:
+            lib = pickle.load(f)
+        return lib
+
+    def decide_allocation(self, gs: GameState):
+
+        stop, play = self.values[state]
+
+
+        return rabbits, cages
+
+    def decide_continue(self, gs: GameState):
+        return self.roll_again
+    
+    def __repr__(self):
+        return f"BotUser (Neuro)"
