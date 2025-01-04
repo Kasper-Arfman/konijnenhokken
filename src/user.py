@@ -6,15 +6,7 @@ from scipy.special import softmax
 from models import UI, GameState
 from src.command_line import CommandUI
 from src.bot_ui import BotUI
-import pickle
-import numpy as np
-import neat
-import os
-import random
-from collections import Counter
-from functools import cache
-import neat.threaded
-import pickle
+from numerical.compute_forward import children, stop_value
 
 def weighted_draw(arr, default=0):
     if not arr: return default
@@ -184,19 +176,17 @@ class User:
         return f"Human"
 
 
-class BotUser(User):
+class NeuralBot(User):
 
-    def __init__(self, ui: UI=None, net: FeedForwardNetwork=None, verbose=False):
+    def __init__(self, ui: UI=None, policy: FeedForwardNetwork=None, verbose=False):
         self.ui = ui() if ui else BotUI()
-        self.strategy = net
+        self.policy = policy
         self.verbose = verbose
 
     def decide_allocation(self, gs: GameState):
         v_in = encode_input(gs, verbose=self.verbose)
-        v_out = self.strategy.activate(v_in)
+        v_out = self.policy.activate(v_in)
         rabbits, cages, self.roll_again = decode_output_mc(v_out, gs, verbose=1 if self.verbose else 0)
-        # if self.verbose:
-            # print(f"Picked:")
         return rabbits, cages
 
     def decide_continue(self, gs: GameState):
@@ -206,21 +196,13 @@ class BotUser(User):
         return f"BotUser (Neuro)"
     
 
-class ValueBot(User):
+class QBot(User):
 
-    def __init__(self, ui: UI=None, net=None, verbose=False):
+    def __init__(self, ui: UI=None, policy: dict=None, verbose=False):
         self.ui = ui if ui else BotUI()
+        self.policy = policy
+        print(len(self.policy))
         self.verbose = verbose   
-
-        self.state_value = {s: v for s, v in zip(self.iter_states(), net)}
-
-    @staticmethod
-    def iter_states():
-        for turn_score in range(100):
-            for r1 in range(8):
-                for r2 in range(8-r1):
-                    for c in range(min(8-r1-r2, 5)):
-                        yield (turn_score, r1, r2, c)
 
     @staticmethod
     def possible_states(r1, r2, c, roll: tuple):
@@ -271,72 +253,19 @@ class ValueBot(User):
     def decide_allocation(self, gs: GameState):
         """Find all the states that can be reached from here
         Pick the one with the largest score."""
-        # Find all the possible destination states
-        # - the turn score remains unchanged
-        rabbits = gs.rabbits
-        cages = gs.cages
-
-        t = gs.turn_score
-        r1 = rabbits.count(1)
-        r2 = rabbits.count(2)
-        c = len(cages)
-        state = (t, r1, r2, c)
-
-        roll = tuple(gs.roll)
-
-        # print(f"{state = } {roll = }")
-
-
-        dest = ((t, *s) for s in self.possible_states(r1, r2, c, roll))
-
-        # Find the destination state that has the max value
-        best = max(dest, key=self.state_value.get)
-        # print(f'chose {best = }')
-
-
-        return self.state_difference(best, state)
+        roll = Counter(gs.roll)
+        exp = lambda state: max(stop_value(state), self.play_value(state))
+        best = max(children(gs.state, roll), key=exp)
+        return self.state_difference(best, gs.state)
 
     def decide_continue(self, gs: GameState):
-        rabbits = gs.rabbits
-        
-        turn_score = gs.turn_score
-        r1 = rabbits.count(1)
-        r2 = rabbits.count(2)
-        c = len(gs.cages)
-        state = (turn_score, r1, r2, c)
-
-        # turn_score, r1, r2, c = state
-        stop = turn_score + (r1 + 2*r2) * (c+1)
-        play = self.state_value[state]
+        stop = gs.stop_score
+        play = self.play_value(gs.state)
         return play > stop
+    
+    def play_value(self, state):
+        return self.policy[state]
     
     def __repr__(self):
         return f"BotUser (Value)"
     
-
-
-class PerfectBot(User):
-
-    def __init__(self, ui: UI=None, verbose=False):
-        self.ui = ui() if ui else BotUI()
-        self.verbose = verbose
-        self.values = self.load_values()
-
-    @staticmethod
-    def load_values():
-        with open(r'C:\Users\arfma005\Documents\GitHub\konijnenhokken\library.pkl', 'rb') as f:
-            lib = pickle.load(f)
-        return lib
-
-    def decide_allocation(self, gs: GameState):
-
-        stop, play = self.values[state]
-
-
-        return rabbits, cages
-
-    def decide_continue(self, gs: GameState):
-        return self.roll_again
-    
-    def __repr__(self):
-        return f"BotUser (Neuro)"

@@ -44,7 +44,7 @@ import pickle
 from neat.nn.feed_forward import FeedForwardNetwork
 from neat.threaded import ThreadedEvaluator
 
-from src import Engine, BotUser
+from src import Engine, NeuralBot
 
 NUM_TURNS = 1000
 
@@ -57,7 +57,7 @@ def eval_genomes(genomes: Genomes, config: Config):
 
 def eval_genome(genome: DefaultGenome, config: Config):
     net = FeedForwardNetwork.create(genome, config)
-    user = BotUser(net=net, verbose=False)
+    user = NeuralBot(policy=net, verbose=False)
     game = Engine([user])
     game.play(NUM_TURNS)
 

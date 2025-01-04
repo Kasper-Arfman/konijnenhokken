@@ -1,7 +1,7 @@
 import pickle
 import neat
 import os
-from src import Engine, BotUser
+from src import Engine, NeuralBot
 
 
 local_dir = os.path.dirname(__file__)
@@ -16,7 +16,7 @@ def load_bot(file_name):
     with open(f'{file_name}.pkl', 'rb') as f:
         genome = pickle.load(f)
     net = neat.nn.FeedForwardNetwork.create(genome, CONFIG)
-    return BotUser(net=net)
+    return NeuralBot(policy=net)
 
 def main(n_turns=10_000):
     game = Engine([

@@ -7,11 +7,11 @@ class CommandUI(UI):
         print(f"{str(gs.rabbits):21} {str(gs.cages):21}")
         return
 
-    def on_dice_roll(self, gs: GameState=None):
+    def on_dice_roll(self, gs: GameState):
         """"""
         print(f" {str(gs.roll):21}", end=' ')
 
-    def on_turn_start(self, gs: GameState=None):
+    def on_turn_start(self, gs: GameState):
         print(f" {'Roll':21} {'Rabbits':21} {'Cages':21}")
 
     def on_turn_lost(self, gs: GameState=None):

@@ -12,6 +12,14 @@ class GameState:
     roll: list
     dice_remaining: int
 
+    @property
+    def state(self):
+        raise NotImplementedError()
+    
+    @property
+    def stop_score(self):
+        raise NotImplementedError()
+
     def start_turn(self):
         raise NotImplementedError()
 

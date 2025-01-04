@@ -19,6 +19,20 @@ class UserGameState(GameState):
 
     """  ==== User Events ==== """
 
+    @property
+    def state(self):
+        t = self.turn_score
+        r1 = self.rabbits.count(1)
+        r2 = self.rabbits.count(2)
+        c = len(self.cages)
+        return (t, r1, r2, c)
+    
+    @property
+    def stop_score(self):
+        t, r1, r2, c = self.state
+        return t + (r1 + 2*r2) * (c+1)
+
+
     def start_turn(self):
         # Get all dice back
         self.dice_remaining = self.total_dice
@@ -90,7 +104,9 @@ class UserGameState(GameState):
         self.roll = []
 
     def read_only(self):
-        return deepcopy(self)
+        copy = deepcopy(self)
+        # print(f"{copy = }")
+        return copy
 
     def __repr__(self):
         return f"{self.rabbits = }\n{self.cages = }\n{self.turn_score = }\n{self.game_score = }\n{self.dice_remaining = }"
