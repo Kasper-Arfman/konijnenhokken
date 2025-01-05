@@ -6,7 +6,7 @@ SOLUTION = 'solution.pkl'
 def test_bot(n_turns=10):
     """Play a game against the bot"""
     game = Engine([
-        # User('Human'),
+        User('Human'),
         QBot('Bot', load_policy(SOLUTION), verbose=True)
         ])
     game.play(n_turns)
