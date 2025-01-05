@@ -1,6 +1,6 @@
 from collections import Counter
 from game.user import User
-from models.state import UserState
+from game.state import UserState
 
 class Engine:
 

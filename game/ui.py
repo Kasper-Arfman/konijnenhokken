@@ -1,4 +1,4 @@
-from models import UserState
+from game.state import UserState
 
 class UI:
 

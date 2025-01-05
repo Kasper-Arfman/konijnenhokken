@@ -1,5 +1,6 @@
 from collections import Counter
-from models import UI, UserState
+from game.ui import UI
+from game.state import UserState
 from game.ui_cmd import CommandUI
 from game.solver import possible_allocations, stop_value
 

@@ -1,8 +1,9 @@
-import pygame
-import threading
-from models import UI, UserState
-from models.state import UserState
 import time
+import threading
+import pygame
+from game.ui import UI
+from game.state import UserState
+
 
 class GraphicalUI(UI):
     MAX_FPS = 30

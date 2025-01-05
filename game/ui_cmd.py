@@ -1,5 +1,6 @@
 from collections import Counter
-from models import UI, UserState
+from game.ui import UI
+from game.state import UserState
 
 class CommandUI(UI):
 
