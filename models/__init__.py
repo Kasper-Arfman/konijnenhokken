@@ -1,2 +1,2 @@
-from .game_state import GameState
-from .user_interface import UI
+from .state import UserState
+from .ui import UI

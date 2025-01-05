@@ -1,58 +1,58 @@
 from math import factorial, prod
 from collections import Counter
 from itertools import combinations_with_replacement
-from functools import cache
 
-DEPTH = 101  # Always stop if you reach this many points. Must be sufficiently large to find the solution
+cache = {}  # Store solutions here
+DEPTH = 101  # Sufficiently large
 NUM_DICE = 7
 DICE_PROBABILITIES = {
-    1: 1/6,
-    2: 1/6,
-    3: 1/6,
-    4: 1/6,
-    5: 1/6,
-    6: 1/6,
+    1: 1/6,  2: 1/6,
+    3: 1/6,  4: 1/6,
+    5: 1/6,  6: 1/6,
 }
 
+def solve():
+    """Solves the game by finding the expected value for the first state.
+    This is done by computing the expected play-value of all the children. Solutions are stored in the cache
+    """
+    global cache
+    max_score = E((0, 0, 0, 0))  # Update cache
+    Q = sorted_dict(cache)
+    cache = {}  # clear cache
+    return max_score, Q
+
 def E(state):
-    s = stop_value(state)
-    p = play_value(state)
-    result = max(s, p)
-    return result
+    """Expectation value of a state"""
+    return max(stop_value(state), play_value(state))
 
 def stop_value(state):
-    """Value of cashing in points at this state"""
+    """Obtained score when stopping"""
     t, r1, r2, c = state
     return t + (r1 + 2*r2)*(c+1)
 
-Q = {}
+
 def play_value(state):
-    """ The expected value of a state
-    To compute the expected score of a state:
-     - Consider all possible dice rolls
-     - For any dice roll, consider all possible allocations
-    """
-    if state not in Q:
+    """Expected score when rolling again"""
+    if state not in cache:
         # If no dice are left, start a new turn
+        # Stores both (0, 7, 0, 0) and (7, 0, 0, 0), although they are identical
         if sum(state[1:]) == NUM_DICE:
-            Q[state] = play_value(next_turn(state))
+            cache[state] = play_value(next_turn(state))
 
         # Base case: stop if we have too many points
         elif state[0] >= DEPTH:
-            Q[state] = -1
+            cache[state] = -1
         
         else:
-            Q[state] = sum(P(r) * Emax(state, r) for r in rolls(state))
+            cache[state] = sum(P(r) * E_roll(state, r) for r in rolls(state))
     
-    return Q[state]
+    return cache[state]
 
-def Emax(state, roll: dict):
-    """ The expected value of a state, given a roll
-    This is the expected value of the best choice
-    """
-    return max((E(ch) for ch in children(state, roll)), default=0)
+def E_roll(state, roll: dict):
+    """Expected score - given a roll - of the best allocation"""
+    return max((E(state) for state in possible_allocations(state, roll)), default=0)
 
-def children(state: tuple, roll: dict):
+def possible_allocations(state: tuple, roll: dict):
     """All the possible states that can be obtained from a roll"""
     t, r1, r2, c = state
     states = set()
@@ -92,21 +92,8 @@ def rolls(state, options=[1, 2, 3, 4, 5, 6]):
 
 def next_turn(state):
     """Transfer points"""
-    t, r1, r2, c = state
-    t += (r1 + 2*r2)*(c+1)
-    return t, 0, 0, 0
+    return stop_value(state), 0, 0, 0
 
-def main():
-    # Solve Konijnenhokken (!)
-    max_score = E((0, 0, 0, 0))
-    print(f"{max_score = }")
-
-    # Export the solution (play values)
-    import pickle
-    global Q
-    Q = dict(sorted(Q.items()))
-    with open('library.pkl', 'wb') as f:
-        pickle.dump(Q, f)
-
-if __name__ == "__main__":
-    main()
+def sorted_dict(d: dict, value=False):
+    """Sort a dict by key (default) or by value"""
+    return dict(sorted(d.items(), key=lambda x:x[value]))

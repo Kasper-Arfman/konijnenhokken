@@ -1,19 +1,16 @@
 import pygame
 import threading
-from models import UI, GameState
-from src.gamestate import UserGameState
+from models import UI, UserState
+from models.state import UserState
 import time
-
-"""TODO:
- - Give each rect in the roll an <active> parameter
- 
-"""
 
 class GraphicalUI(UI):
     MAX_FPS = 30
     N_DICE = 7
 
-    def __init__(self, width=800, height=600):
+    def __init__(self, alias, width=800, height=600):
+        self.alias = alias
+
         pygame.init()
         self.width = width
         self.height = height
@@ -33,7 +30,7 @@ class GraphicalUI(UI):
         self.game_score_rect = pygame.Rect(410, 20, 150, 50)
 
         # Initialize game state
-        self.gs = UserGameState(7)
+        self.gs = UserState(7)
 
         # Initialize selection state
         self.roll_iselection = []
@@ -90,38 +87,36 @@ class GraphicalUI(UI):
 
     """ ==== engine interface ===="""
 
-    def on_turn_start(self, gs: GameState=None):
+    def on_turn_start(self, gs: UserState=None):
+        print(f"\nNow playing: {self.alias}")
         print(f" {'Roll':21} {'Rabbits':21} {'Cages':21}")
         self.gs = gs
         self.selection_state(0)
 
-    def on_dice_roll(self, gs: GameState=None):
+    def on_dice_roll(self, gs: UserState=None):
         print(f" {str(gs.roll):21}", end=' ')
-        self.gs = gs  # update roll info
+        self.gs = gs
         self.selection_state(0)
 
-    def on_decide_allocation(self, gs: GameState=None):
-        #print('Allocating...')
+    def on_decide_allocation(self, gs: UserState=None):
         self.gs = gs
         self.selection_state(1)
 
-        # wait untill a selection is made
+        # wait until a selection is made
         while not self.selection_locked:
             pygame.event.pump()  
             self.clock.tick(self.MAX_FPS)
 
         rabbits, cages = self.rabbit_selection.copy(), self.cage_selection.copy()
-        #print(f" -> {rabbits = }, {cages = }")
         self.selection_state(0)
         return rabbits, cages
 
-    def on_point_allocation(self, gs: GameState=None):
+    def on_point_allocation(self, gs: UserState=None):
         print(f"{str(gs.rabbits):21} {str(gs.cages):21}")
         self.gs = gs  # update point information
         self.selection_state(0)
 
-    def on_decide_continue(self, gs: GameState=None):
-        #print(f" - on_decide_continue: ")
+    def on_decide_continue(self, gs: UserState=None):
         self.gs = gs
         self.selection_state(3)
 
@@ -134,31 +129,27 @@ class GraphicalUI(UI):
         self.selection_state(0)
         return roll_again
 
-    def on_turn_lost(self, gs: GameState=None):
+    def on_turn_lost(self, gs: UserState=None):
         print(f'=> Oh dear, no rabbits')
         print(f"{gs.turn_score} / {gs.game_score}")
         self.gs = gs
         self.selection_state(0)
         time.sleep(1)
 
-    def on_run_completed(self, gs: GameState=None):
-        #print(f" => Nice, you finished the dice!")
+    def on_run_completed(self, gs: UserState=None):
         self.gs = gs
         self.selection_state(0)
 
-    def on_next_roll(self, gs: GameState=None):
-        #print(f" - Going to roll again...")
+    def on_next_roll(self, gs: UserState=None):
         self.gs = gs
         self.selection_state(0)
 
-    def on_end_turn(self, gs: GameState=None):
-        #print(f" => Ending the turn now")
+    def on_end_turn(self, gs: UserState=None):
         print(f"{gs.turn_score} / {gs.game_score}")
         self.gs = gs
         self.selection_state(0)
-        #print(f"{self.gs.game_score}")
 
-    def on_game_over(self, gs: GameState=None):
+    def on_game_over(self, gs: UserState=None):
         self.gs = gs
         self.running = False
         self.selection_state(0)
@@ -277,7 +268,6 @@ class GraphicalUI(UI):
     def on_roll(self):
         self.roll_again = True
         self.decision_locked = True
-        # self.to_state(0)
 
     def on_stop(self):
         self.roll_again = False
@@ -402,12 +392,6 @@ class GraphicalUI(UI):
                     )
                 self.screen.blit(text, text.get_rect(center=rect.center))
 
-    def error_message(self, message):
-        """"""
-        print(f"ERROR: {message}")
-
-
 if __name__ == "__main__":
     import time
     gui = GraphicalUI()
-    #print('ended')

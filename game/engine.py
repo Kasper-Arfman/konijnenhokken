@@ -1,7 +1,6 @@
 from collections import Counter
-from models import GameState
-from src.user import User
-from src.gamestate import UserGameState
+from game.user import User
+from models.state import UserState
 
 class Engine:
 
@@ -14,7 +13,7 @@ class Engine:
     def __init__(self, users: list[User], *, n_dice=None):
         self.users = users
         self.n_dice = n_dice or self.DEFAULT_NUM_DICE
-        self.gs = {user: UserGameState(self.n_dice) for user in self.users}
+        self.gs = {user: UserState(self.n_dice) for user in self.users}
 
     """ ==== Core ==== """
 
@@ -25,66 +24,66 @@ class Engine:
         """
         for _ in range(rounds):
             for user in self.users:
-                print(f"\nNow playing: {user}")
+                # print(f"\nNow playing: {user}")
                 self.take_turn(user)
         self.game_over()
         for user in self.users:
-            gs = self.gs[user]
-            user.ui.on_game_over(gs.read_only())
+            us = self.gs[user]
+            user.ui.on_game_over(us.read_only())
 
     def take_turn(self, user: User):
-        gs = self.gs[user]
-        gs.start_turn()
-        user.ui.on_turn_start(gs.read_only())
+        us = self.gs[user]
+        us.start_turn()
+        user.ui.on_turn_start(us.read_only())
         while True:
-            gs.roll_dice()
-            user.ui.on_dice_roll(gs.read_only())
+            us.roll_dice()
+            user.ui.on_dice_roll(us.read_only())
 
-            if self.turn_lost(gs):
-                gs.lose_turn()
-                user.ui.on_turn_lost(gs.read_only())
+            if self.turn_lost(us):
+                us.lose_turn()
+                user.ui.on_turn_lost(us.read_only())
                 break
 
             # ask the user how to allocate points
-            rabbits, cages = self.request_allocation(gs, user)
-            gs.allocate(rabbits, cages)
-            user.ui.on_point_allocation(gs.read_only())
+            rabbits, cages = self.request_allocation(us, user)
+            us.allocate(rabbits, cages)
+            user.ui.on_point_allocation(us.read_only())
 
-            if self.run_completed(gs):
+            if self.run_completed(us):
                 # Got rid of all the dice!
-                gs.complete_run()
-                user.ui.on_run_completed(gs.read_only())
+                us.complete_run()
+                user.ui.on_run_completed(us.read_only())
             else:
                 # Still in the same run
                 # No need to update the game state here
                 pass
 
             # ask the user if he wants to go again
-            if not user.decide_continue(gs):
-                gs.end_turn()
-                user.ui.on_end_turn(gs.read_only())
+            if not user.decide_continue(us):
+                us.end_turn()
+                user.ui.on_end_turn(us.read_only())
                 break
 
-            user.ui.on_next_roll(gs.read_only())
+            user.ui.on_next_roll(us.read_only())
         return
     
     """ ==== Interface with user ==== """
 
-    def request_allocation(self, gs: GameState, user: User):
-        rabbits, cages = user.decide_allocation(gs.read_only())
-        status, message = self.validate_allocation(gs, rabbits, cages)
+    def request_allocation(self, us: UserState, user: User):
+        rabbits, cages = user.decide_allocation(us.read_only())
+        status, message = self.validate_allocation(us, rabbits, cages)
         while not status:
             user.ui.error_message(message)
 
             exit()  # remove this later!
 
-            rabbits, cages = user.decide_allocation(gs.read_only())
-            status, message = self.validate_allocation(gs, rabbits, cages)
+            rabbits, cages = user.decide_allocation(us.read_only())
+            status, message = self.validate_allocation(us, rabbits, cages)
 
         return rabbits, cages
 
-    def validate_allocation(self, gs: GameState, rabbits: list, cages: list):
-        roll = Counter(gs.roll)
+    def validate_allocation(self, us: UserState, rabbits: list, cages: list):
+        roll = Counter(us.roll)
         rabbits = Counter(rabbits)
         cages = Counter(cages)
 
@@ -110,7 +109,7 @@ class Engine:
             return False, f'Not only cages'
 
         # - All cages occur once, and none have been selected before
-        req = Counter(gs.cages) + cages
+        req = Counter(us.cages) + cages
         if cages and any(req[x]!=1 for x in range(2, max(cages))):
             return False, f"Not unique, a gap, or missing the 2"
 
@@ -118,17 +117,17 @@ class Engine:
 
     """ ==== checking for events ==== """
 
-    def turn_lost(self, gs: GameState):
+    def turn_lost(self, us: UserState):
         """The roll does not contain any rabbits"""
-        return not set(gs.roll) & self.RABBITS
+        return not set(us.roll) & self.RABBITS
 
-    def run_completed(self, gs: GameState):
-        return not gs.dice_remaining
+    def run_completed(self, us: UserState):
+        return not us.dice_remaining
 
     def game_over(self, verbose=False):
         if verbose:
             print(f"\nGame Over")
             for user in self.users:
-                gs = self.gs[user]
-                print(f"user {user.i}: {gs.game_score} points")
+                us = self.gs[user]
+                print(f"user {user.i}: {us.game_score} points")
 

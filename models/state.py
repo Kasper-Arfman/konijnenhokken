@@ -1,9 +1,7 @@
-from copy import deepcopy
 import random
-from models import GameState
+from copy import deepcopy
 
-class UserGameState(GameState):
-
+class UserState:
     rabbits: list
     cages: list
 
@@ -31,7 +29,6 @@ class UserGameState(GameState):
     def stop_score(self):
         t, r1, r2, c = self.state
         return t + (r1 + 2*r2) * (c+1)
-
 
     def start_turn(self):
         # Get all dice back
