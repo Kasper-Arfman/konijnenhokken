@@ -40,15 +40,15 @@ A state (snapshot of the game) can be fully described by just four numbers:
 - $t$: points obtained in previous runs of this turn
 
 Moreover, every state is given a value, $E(\text{state})$, that indicates how many points you can expect from it:
-$$E(\text{state}) = \max(\text{stop\_value(state)}, \text{play\_value(state)})$$
+$$E(\text{state}) = \max(\text{stop(state)}, \text{play(state)})$$
 
 where
 
 -  **stop_value**: the number of points you get by stopping.
-   $$\text{stop\_value(state)} = t + (r_1 + 2r_2) * (1 + c)$$
+   $$\text{stop(state)} = t + (r_1 + 2r_2) * (1 + c)$$
 -  **play_value**: the number of points you can expect if you roll again.
 
-$$ \text{play\_value(state)} = \sum\limits_{\text{roll}} P(\text{roll}) \cdot E(\text{state} \mid \text{roll}) $$
+$$ \text{play(state)} = \sum\limits_{\text{roll}} P(\text{roll}) \cdot E(\text{state} \mid \text{roll}) $$
 
 Here, $P(\text{roll})$ is the probability of a roll, and $E(\text{state} \mid \text{roll})$ is the value of the best allocation choice given this roll:
 
