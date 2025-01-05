@@ -40,6 +40,7 @@ A state (snapshot of the game) can be fully described by just four numbers:
 - $t$: points obtained in previous runs of this turn
 
 Moreover, every state is given a value, $E(\text{state})$, that indicates how many points you can expect from it:
+
 $$E(\text{state}) = \max(\text{stop(state)}, \text{play(state)})$$
 
 where
@@ -59,9 +60,9 @@ $$
 Once we know the value of some states, we can use the above formulas to determine values of all the other states. So all we need now is a starting point. The key here is to realize that the best strategy is always to stop whenever we have already acquired many points. So if we choose a sufficiently large threshold, $t_{max}$, we can say:
 
 $$
-E(state) = 
+E(\text{state}) = 
 \begin{cases}
-\text{stop\_value}(state) & (\text{if } t > t_{max}) \\
+\text{stop}(state) & (\text{if } t > t_{max}) \\
 \end{cases}
 $$
 
