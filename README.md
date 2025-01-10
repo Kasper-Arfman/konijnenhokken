@@ -46,7 +46,9 @@ $$E(\text{state}) = \max(\text{stop(state)}, \text{play(state)})$$
 where
 
 -  **stop_value**: the number of points you get by stopping.
-   $$\text{stop(state)} = t + (r_1 + 2r_2) * (1 + c)$$
+
+$$\text{stop(state)} = t + (r_1 + 2r_2) * (1 + c)$$
+
 -  **play_value**: the number of points you can expect if you roll again.
 
 $$ \text{play(state)} = \sum\limits_{\text{roll}} P(\text{roll}) \cdot E(\text{state} \mid \text{roll}) $$
