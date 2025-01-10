@@ -57,7 +57,7 @@ $$
 E(\text{state} \mid \text{roll}) = \max_{\text{allocations}(\text{state}, \text{roll})} E(\text{state})
 $$
 
-Once we know the value of some states, we can use the above formulas to determine values of all the other states. So all we need now is a starting point (a state whose value is known). The key here is to realize that the best strategy is always to stop whenever we have already acquired many points. So if we choose a sufficiently large threshold, $t_{max}$, we can say:
+Once we know the value of some states, we can use the above formulas to determine values of all the other states. So all we need now is a starting point (a state whose value is known). The key here is to realize that stopping is always going to be the best strategy when you have a lot of points. So if we choose a sufficiently large threshold, $t_{max}$, we can say:
 
 $$
 E(\text{state}) = 
