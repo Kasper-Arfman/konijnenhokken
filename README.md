@@ -1,5 +1,5 @@
 # Konijnenhokken
-Konijnenhokken is a dice game by 999 Games in which you score points by building a **base score** and a **multiplier**. You play by rolling 7 regular dice, which can be allocated to score points:
+Konijnenhokken is a dice game by 999 Games in which you score points by building a **base score** (rabbits) and a **multiplier** (cages). You play by rolling 7 regular dice, which can be allocated to score points:
 1. base +1 
 2. base +2 **OR** multiplier x2
 3. multiplier x3
