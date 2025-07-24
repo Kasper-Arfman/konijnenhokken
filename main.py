@@ -1,10 +1,13 @@
-from pyjacket import filetools
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import NumericProperty, StringProperty
-from game.solver import stop_value
+import pickle
+import os
 
-PLAY_VALUE: dict = filetools.read_pickle('solution')
+filepath = os.path.join(os.path.dirname(__file__), 'solution.pkl')
+
+with open(filepath, 'rb') as f:
+    PLAY_VALUE: dict = pickle.load(f)
 
 def main():
     app = CheatApp() 
@@ -48,6 +51,11 @@ class CheatSheet(BoxLayout):
             self.response = 'play'
         else:
             self.response = 'stop'
+
+def stop_value(state):
+    """Obtained score when stopping"""
+    t, r1, r2, c = state
+    return t + (r1 + 2*r2)*(c+1)
 
 if __name__ == "__main__":
     main()
