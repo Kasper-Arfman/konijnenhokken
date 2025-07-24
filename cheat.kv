@@ -1,0 +1,160 @@
+#:kivy 2.3.1
+
+<CheatSheet>:
+    padding: 10
+    # 1
+    BoxLayout:
+        Label:
+            text: '1'
+        CustomBoxLayout:
+
+            ToggleButton:
+                group: 'ones'
+                text: '0'
+                on_press: root.on_ones_toggle(0)
+            ToggleButton:
+                group: 'ones'
+                text: '1'
+                on_press: root.on_ones_toggle(1)
+            ToggleButton:
+                group: 'ones'
+                text: '2'
+                on_press: root.on_ones_toggle(2)
+            ToggleButton:
+                group: 'ones'
+                text: '3'
+                on_press: root.on_ones_toggle(3)
+            ToggleButton:
+                group: 'ones'
+                text: '4'
+                on_press: root.on_ones_toggle(4)
+            ToggleButton:
+                group: 'ones'
+                text: '5'
+                on_press: root.on_ones_toggle(5)
+            ToggleButton:
+                group: 'ones'
+                text: '6'
+                on_press: root.on_ones_toggle(6)
+            ToggleButton:
+                group: 'ones'
+                text: '7'
+                on_press: root.on_ones_toggle(7)
+
+    # 2
+    BoxLayout:
+        Label:
+            text: '2'
+            valign: 'bottom'
+
+        CustomBoxLayout:
+            ToggleButton:
+                group: 'twos'
+                text: '0'
+                on_press: root.on_twos_toggle(0)
+            ToggleButton:
+                group: 'twos'
+                text: '1'
+                on_press: root.on_twos_toggle(1)
+            ToggleButton:
+                group: 'twos'
+                text: '2'
+                on_press: root.on_twos_toggle(2)
+            ToggleButton:
+                group: 'twos'
+                text: '3'
+                on_press: root.on_twos_toggle(3)
+            ToggleButton:
+                group: 'twos'
+                text: '4'
+                on_press: root.on_twos_toggle(4)
+            ToggleButton:
+                group: 'twos'
+                text: '5'
+                on_press: root.on_twos_toggle(5)
+            ToggleButton:
+                group: 'twos'
+                text: '6'
+                on_press: root.on_twos_toggle(6)
+            ToggleButton:
+                group: 'twos'
+                text: '7'
+                on_press: root.on_twos_toggle(7)
+    # x
+    BoxLayout:
+        Label:
+            text: 'x'
+        CustomBoxLayout:
+            ToggleButton:
+                group: 'mult'
+                text: 'x1'
+                on_press: root.on_mult_toggle(0)
+            ToggleButton:
+                group: 'mult'
+                text: 'x2'
+                on_press: root.on_mult_toggle(1)
+            ToggleButton:
+                group: 'mult'
+                text: 'x3'
+                on_press: root.on_mult_toggle(2)
+            ToggleButton:
+                group: 'mult'
+                text: 'x4'
+                on_press: root.on_mult_toggle(3)
+            ToggleButton:
+                group: 'mult'
+                text: 'x5'
+                on_press: root.on_mult_toggle(4)
+
+
+    # score | stash
+    CustomBoxLayout:
+        BoxLayout:
+            Label:
+                text: 'Turn score'
+            BoxLayout:
+                Label:
+                    text: str(root.stop_value - root.plus)
+
+        BoxLayout:
+            Label:
+                text: 'Stashed'
+            TextInput:
+                halign: 'center'
+                padding_y: [(self.height - self.line_height) / 2, 0]
+                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                text: str(root.plus)
+                input_filter: 'int'
+                multiline: False
+                on_text_validate: 
+                    root.plus = int(self.text)
+                    root.on_solve()
+    # play | stop
+    CustomBoxLayout:
+        BoxLayout:
+            Label:
+                text: 'Play:'
+            Label:
+                # text: str(root.plus) + ', ' + str(root.ones) + ', ' + str(root.twos) + ', ' + str(root.mult)
+                # text: str(root.play_value)
+                text: f"{root.play_value:.2f}"
+        
+        BoxLayout:
+            Label:
+                text: 'Stop:'
+            Label:
+                text: f"{root.stop_value:.2f}"
+
+    # Stop or Play
+    Label:
+        id: response_label
+        text: root.response
+        font_size: 24
+        color: (0, 1, 0, 1) if root.response == 'play' else (1, 0, 0, 1)
+
+<BoxLayout>:
+    orientation: 'vertical'
+
+<CustomBoxLayout@BoxLayout>:
+    orientation: 'horizontal'
+    spacing: 3

@@ -1,0 +1,9 @@
+{
+  "terminal.integrated.env.windows": {
+    "PYTHONPATH": "C:\\Users\\arfma005\\Documents\\GitHub\\pyjacket;%PYTHONPATH%"
+  },
+  "python.envFile": "${workspaceFolder}\\.env",
+  "python.autoComplete.extraPaths": [
+    "C:\\Users\\arfma005\\Documents\\GitHub\\pyjacket",
+  ]
+}
