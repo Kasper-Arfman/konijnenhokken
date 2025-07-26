@@ -43,14 +43,14 @@ class CheatSheet(BoxLayout):
         self.stop_value = stop_value(state)
 
         if state not in PLAY_VALUE:
-            self.response = 'invalid'
+            self.response = 'Invalid'
             return
 
         self.play_value = PLAY_VALUE[state]
         if self.play_value > self.stop_value:
-            self.response = 'play'
+            self.response = 'Play'
         else:
-            self.response = 'stop'
+            self.response = 'Stop'
 
 def stop_value(state):
     """Obtained score when stopping"""
