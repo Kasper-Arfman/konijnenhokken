@@ -8,6 +8,7 @@ class User:
 
     def __init__(self, alias, ui: UI=None):
         self.alias = alias
+
         if ui is None:    
             from game.ui_graphical import GraphicalUI
             self.ui = GraphicalUI(self.alias)
@@ -33,7 +34,7 @@ class QBot(User):
         self.ui = CommandUI(alias) if verbose else UI(alias)
 
     @staticmethod
-    def possible_states(r1, r2, c, roll: tuple):
+    def possible_states(r1, r2, c, roll: Counter):
         roll = Counter(roll)
         states = set()
         for d1 in range(roll[1]+1):
