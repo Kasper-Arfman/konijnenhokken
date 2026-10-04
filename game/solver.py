@@ -54,23 +54,22 @@ def E_roll(state, roll: dict):
 
 def possible_allocations(state: tuple, roll: dict):
     """All the possible states that can be obtained from a roll"""
-    t, r1, r2, c = state
+    t, r1, r2, c = state  # turn score, ones as rabbit, twos as rabbit, cage multiplier
     states = set()
-    for d1 in range(roll[1]+1):
-        for d2 in range(roll[2]+1):
+    for ones in range(roll[1]+1):  # ones spending
+        for twos in range(roll[2]+1):  # twos spending
             # Must add atleast one rabbit
-            if (d1, d2) == (0, 0):  continue
+            if ones == twos == 0:  continue
 
-            # 1: Add only rabbits
-            states.add((t, r1+d1, r2+d2, c))
+            # Possibility 1: Add only rabbits
+            states.add((t, r1+ones, r2+twos, c))
 
-            # In case all 2s are used up
-            if not (roll[2] - d2):  continue
-
-            # 2: Add cages as well
+            # Possibility 2: Add cages as well
             for dc, cage in enumerate(range(c+2, 6), 1):
-                if cage not in roll:  break
-                states.add((t, r1+d1, r2+d2, c+dc))
+                # Cage die must be rolled; for x2, it must not be spent as rabbit
+                if roll[cage] <= (twos if cage == 2 else 0):  break
+
+                states.add((t, r1+ones, r2+twos, c+dc))
     return states
 
 def P(roll: dict, p=DICE_PROBABILITIES):
