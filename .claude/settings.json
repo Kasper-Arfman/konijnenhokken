@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(time python solve_singleplayer.py)",
+      "Bash(time python solution_singleplayer_metrics.py)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
