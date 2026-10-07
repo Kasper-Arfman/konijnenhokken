@@ -22,6 +22,10 @@ def stop_value(state):
     t, r1, r2, c = state
     return t + (r1 + 2*r2)*(c+1)
 
+def canonical(state):
+    """A full board is the same as banking the run and rolling 7 fresh dice"""
+    return (stop_value(state), 0, 0, 0) if sum(state[1:]) == 7 else state
+
 def possible_allocations(state: tuple, roll: dict):
     """All the possible states that can be obtained from a roll"""
     t, r1, r2, c = state
@@ -34,12 +38,10 @@ def possible_allocations(state: tuple, roll: dict):
             # 1: Add only rabbits
             states.add((t, r1+d1, r2+d2, c))
 
-            # In case all 2s are used up
-            if not (roll[2] - d2):  continue
-
             # 2: Add cages as well
             for dc, cage in enumerate(range(c+2, 6), 1):
-                if not roll.get(cage):  break
+                # Cage die must be rolled; for x2, it must not be spent as rabbit
+                if roll.get(cage, 0) <= (d2 if cage == 2 else 0):  break
                 states.add((t, r1+d1, r2+d2, c+dc))
     return states
 
@@ -52,7 +54,7 @@ def decide_allocation(state, roll: dict):
     # roll = {k: v for k, v in roll.items() if v}
 
 
-    state_value = lambda state: max(stop_value(state), PLAY_VALUE[state])
+    state_value = lambda state: max(stop_value(state), PLAY_VALUE[canonical(state)])
     best = max(possible_allocations(state, roll), key=state_value)
     return best
 

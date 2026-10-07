@@ -2,7 +2,7 @@ from collections import Counter
 from game.ui import UI
 from game.state import UserState
 from game.ui_cmd import CommandUI
-from game.solver import possible_allocations, stop_value
+from game.solver import possible_allocations, stop_value, canonical
 
 class User:
 
@@ -32,29 +32,6 @@ class QBot(User):
         self.alias = alias
         self.policy = policy
         self.ui = CommandUI(alias) if verbose else UI(alias)
-
-    @staticmethod
-    def possible_states(r1, r2, c, roll: Counter):
-        roll = Counter(roll)
-        states = set()
-        for d1 in range(roll[1]+1):
-            for d2 in range(roll[2]+1):
-                # Must add atleast one rabbit
-                if (d1, d2) == (0, 0):  continue
-
-                # 1: Add only rabbits
-                states.add((r1+d1, r2+d2, c))
-
-                # In case all 2s are used up
-                if not (roll[2] - d2):  continue
-
-                # 2: Add cages as well
-                for dc, cage in enumerate(range(c+2, 6), 1):
-                    if cage not in roll:  break
-                    # Add this possibility
-                    states.add((r1+d1, r2+d2, c+dc))
-
-        return states
 
     @staticmethod
     def state_difference(a, b):
@@ -93,4 +70,4 @@ class QBot(User):
         return play > stop
     
     def play_value(self, state):
-        return self.policy[state]
+        return self.policy[canonical(state)]

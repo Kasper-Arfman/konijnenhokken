@@ -30,12 +30,10 @@ def possible_allocations(state: tuple, roll: dict):
             # 1: Add only rabbits
             states.add((t, r1+d1, r2+d2, c))
 
-            # In case all 2s are used up
-            if not (roll[2] - d2):  continue
-
             # 2: Add cages as well
             for dc, cage in enumerate(range(c+2, 6), 1):
-                if not roll.get(cage):  break
+                # Cage die must be rolled; for x2, it must not be spent as rabbit
+                if roll.get(cage, 0) <= (d2 if cage == 2 else 0):  break
                 states.add((t, r1+d1, r2+d2, c+dc))
     return states
 

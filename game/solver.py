@@ -3,7 +3,7 @@ from collections import Counter
 from itertools import combinations_with_replacement
 
 cache = {}  # Store solutions here
-DEPTH = 101  # Sufficiently large
+DEPTH = 150  # Sufficiently large
 NUM_DICE = 7
 DICE_PROBABILITIES = {
     1: 1/6,  2: 1/6,
@@ -33,14 +33,10 @@ def stop_value(state):
 
 def play_value(state):
     """Expected score when rolling again"""
+    state = canonical(state)
     if state not in cache:
-        # If no dice are left, start a new turn
-        # Stores both (0, 7, 0, 0) and (7, 0, 0, 0), although they are identical
-        if sum(state[1:]) == NUM_DICE:
-            cache[state] = play_value(next_turn(state))
-
         # Base case: stop if we have too many points
-        elif state[0] >= DEPTH:
+        if state[0] >= DEPTH:
             cache[state] = -1
         
         else:
@@ -92,6 +88,11 @@ def rolls(state, options=[1, 2, 3, 4, 5, 6]):
 def next_turn(state):
     """Transfer points"""
     return stop_value(state), 0, 0, 0
+
+def canonical(state):
+    """A full board is the same as banking the run and rolling 7 fresh dice,
+    e.g. (100, 0, 4, 3) is the same state as (132, 0, 0, 0)"""
+    return next_turn(state) if sum(state[1:]) == NUM_DICE else state
 
 def sorted_dict(d: dict, value=False):
     """Sort a dict by key (default) or by value"""
