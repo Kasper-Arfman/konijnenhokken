@@ -1,4 +1,3 @@
-from collections import Counter
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.config import Config
@@ -9,54 +8,19 @@ from kivy.properties import NumericProperty, StringProperty, ObjectProperty, Dic
 import pickle
 import os
 from kivy.graphics import Color, RoundedRectangle
+from game.rules import stop_score, canonical, possible_allocations
 
 Config.set('graphics', 'width', '327')
 Config.set('graphics', 'height', '720')
 
-filepath = os.path.join(os.path.dirname(__file__), 'solution.pkl')
+filepath = os.path.join(os.path.dirname(__file__), 'solution_singleplayer.pkl')
 with open(filepath, 'rb') as f:
     PLAY_VALUE: dict = pickle.load(f)
 
-def stop_value(state):
-    """Obtained score when stopping"""
-    t, r1, r2, c = state
-    return t + (r1 + 2*r2)*(c+1)
-
-def canonical(state):
-    """A full board is the same as banking the run and rolling 7 fresh dice"""
-    return (stop_value(state), 0, 0, 0) if sum(state[1:]) == 7 else state
-
-def possible_allocations(state: tuple, roll: dict):
-    """All the possible states that can be obtained from a roll"""
-    t, r1, r2, c = state
-    states = set()
-    for d1 in range(roll[1]+1):
-        for d2 in range(roll[2]+1):
-            # Must add atleast one rabbit
-            if (d1, d2) == (0, 0):  continue
-
-            # 1: Add only rabbits
-            states.add((t, r1+d1, r2+d2, c))
-
-            # 2: Add cages as well
-            for dc, cage in enumerate(range(c+2, 6), 1):
-                # Cage die must be rolled; for x2, it must not be spent as rabbit
-                if roll.get(cage, 0) <= (d2 if cage == 2 else 0):  break
-                states.add((t, r1+d1, r2+d2, c+dc))
-    return states
-
 def decide_allocation(state, roll: dict):
-    """Find all the states that can be reached from here
-    Pick the one with the largest score."""
-    # roll = Counter(roll)
-    # roll = Counter(roll).copy()  # Better safe than sorry
-
-    # roll = {k: v for k, v in roll.items() if v}
-
-
-    state_value = lambda state: max(stop_value(state), PLAY_VALUE[canonical(state)])
-    best = max(possible_allocations(state, roll), key=state_value)
-    return best
+    """Pick the allocation with the highest expected score"""
+    state_value = lambda state: max(stop_score(state), PLAY_VALUE[canonical(state)])
+    return max(possible_allocations(state, roll), key=state_value)
 
 class CheatApp(App):
     def build(self):
@@ -148,14 +112,14 @@ class CheatSheet(BoxLayout):
 
         # On a completed hand
         if sum(self.dst[1:]) == 7:
-            self.dst = [stop_value(self.dst), 0, 0, 0]
+            self.dst = [stop_score(self.dst), 0, 0, 0]
 
 
         # print(f"{self.dst = }")
 
         # - Decide play
         dst = tuple(self.dst)
-        self.play = PLAY_VALUE[dst] > stop_value(dst)
+        self.play = PLAY_VALUE[dst] > stop_score(dst)
 
         # - Show the markings
         self.update_sliders()
@@ -166,7 +130,7 @@ class CheatSheet(BoxLayout):
         state = tuple(self.field)
         try:
             self.play_value = PLAY_VALUE[state]
-            self.stop_value = stop_value(state)
+            self.stop_value = stop_score(state)
         except KeyError:
             self.play_value = -1
             self.stop_value = -1

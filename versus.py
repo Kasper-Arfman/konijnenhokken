@@ -1,7 +1,7 @@
 import pickle
 from game import Engine, User, QBot
 
-SOLUTION = 'solution.pkl'
+SOLUTION = 'solution_singleplayer.pkl'
 
 def test_bot(n_turns=10):
     """Play a game against the bot"""

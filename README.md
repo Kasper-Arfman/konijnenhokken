@@ -27,8 +27,15 @@ Your goal is to score as many points as possible (base_score * max_multiplier) b
 Konijnenhokken is a solveable game. In other words, it is possible to calculate which choice will on average award you the most points. This repository allows for the computation of the optimal strategy.
 
  - **versus.py** Play the game with a graphical user interface, solo or versus bots.
- - **solve.py** Find the strategy that maximizes expected gains.
+ - **solve_singleplayer.py** Find the strategy that maximizes expected gains (`solution_singleplayer.pkl`).
+ - **solution_singleplayer_metrics.py** Investigate that strategy: average, bust chance, highest score.
+ - **solve_1v1.py** Find the strategy that maximizes the chance of winning a 1v1 game (`solution_1v1.pkl`). Readable but slow: use a small target, e.g. `python solve_1v1.py 20`.
+ - **solve_1v1_fast.py** The same 1v1 solution, fast enough for the full game (about 20 minutes).
+ - **solution_1v1_metrics.py** Investigate the 1v1 strategy.
  - **test.py** Let the bot play many games to measure its performance
+ - **game/rules.py** The rules the solvers share: rolls, allocations and scores.
+
+[SOLVER.md](SOLVER.md) explains how the solvers work.
 
 ## Solving the Game
 Konijnenhokken can be understood through a network of nodes and vertices. Here, nodes represent the possible states of the game, and vertices indicate which transfers are possible. A player taking his turn is analogous to a traversal along the network.
@@ -75,6 +82,6 @@ Once the stop_value and play_value are known, making choices in the game is a pi
 
 
 ## Disclaimer
-The solution presented here optimizes the expected score not the win probability. The latter is a more complex problem, because the best strategy will depend on your current position (winning or losing). If you are winning, you might favor a strategy that earns fewer points with more certainty. Conversely, a losing player might favour a strategy that has a small chance of earning many points.
+The solution presented here optimizes the expected score not the win probability. The latter is a more complex problem, because the best strategy will depend on your current position (winning or losing). If you are winning, you might favor a strategy that earns fewer points with more certainty. Conversely, a losing player might favour a strategy that has a small chance of earning many points. The 1v1 solver (`solve_1v1.py`) takes this into account.
 
 ---

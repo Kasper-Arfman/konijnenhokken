@@ -1,7 +1,7 @@
 import pickle
 from game import Engine, QBot
 
-SOLUTION = 'solution.pkl'
+SOLUTION = 'solution_singleplayer.pkl'
 
 def test_bot(n_turns=100_000):
     """Verify that the bot performs as expected"""
