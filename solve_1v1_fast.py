@@ -81,6 +81,7 @@ def build_turn_graph():
     return dict(
         boards=boards,
         score=np.array([stop_score((0,) + board) for board in boards]),
+        p_bust=np.array([(4 / 6) ** (NUM_DICE - sum(board)) for board in boards]),  # Chance the next roll busts
         full=np.array([index[b] for b in boards if sum(b) == NUM_DICE]),
         empty=index[(0, 0, 0)],
         bust=bust,
@@ -105,6 +106,27 @@ def best_per_group(values, starts, counts):
     result[BUST] = np.minimum.reduceat(np.where(chosen, values[BUST], np.inf), starts, axis=0)
     return result
 
+def stop_bound(stop_value, bust_value, max_bank):
+    """Tighten max_bank: the turn score above which stopping is optimal on every board.
+
+    Rolling busts with chance p_bust, so even if every other roll won with certainty it
+    would be worth at most p_bust * bust_value + (1 - p_bust). With t banked, if stopping
+    is worth at least that on every board (the empty one too: 7 fresh dice), nobody rolls
+    on with t banked. The new max_bank is the highest t where that fails."""
+    g = GRAPH
+    S = len(stop_value)
+    could_roll = g['p_bust'][:, None] * bust_value + (1 - g['p_bust'][:, None])  # (boards, batch)
+    tight = np.zeros_like(max_bank)
+    open_ = np.ones(len(max_bank), dtype=bool)  # Columns still looking for a t where rolling might pay
+    for t in range(max_bank.max(), -1, -1):
+        stops = stop_value[np.minimum(t + g['score'], S - 1)]  # (boards, batch)
+        rolls_on = (stops < could_roll).any(axis=0) & (t <= max_bank)
+        found = open_ & rolls_on
+        tight[found] = t
+        open_ &= ~found
+        if not open_.any():  break
+    return tight
+
 def solve_turns(stop_value, bust_value, max_bank, all_banks=False):
     """Solve a batch of independent turns, one per column.
 
@@ -118,6 +140,8 @@ def solve_turns(stop_value, bust_value, max_bank, all_banks=False):
     g = GRAPH
     S, batch = stop_value.shape
     score, full = g['score'], g['full']
+    if not all_banks:  # all_banks needs every t up to max_bank
+        max_bank = stop_bound(stop_value, bust_value, max_bank)
 
     # Sort the columns by max_bank, so the columns still in play are always the first k
     order = np.argsort(-max_bank, kind='stable')

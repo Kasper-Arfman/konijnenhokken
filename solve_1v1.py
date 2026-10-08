@@ -43,9 +43,13 @@ after the round in which someone reaches TARGET points; most points wins.
 
 == Bounding the turn
 
-    Everyone stops as soon as stopping wins with certainty, so turns can't go on forever:
-    P2 when reaching TARGET, P1 when so far ahead that P2's final-turn win chance is
-    below floating point precision (1 - Q == 1, a lead of about 775 for TARGET = 200).
+    Rolling with k dice left busts with chance p_bust = (4/6)^k (no 1 or 2). Even if
+    every other roll won with certainty, rolling would be worth at most
+        p_bust * end_turn(S, 0) + (1 - p_bust)
+    so once stopping is worth at least that, stopping is optimal without looking further.
+    This is exact, and it bounds the turns: as the turn score grows, stopping soon wins
+    with near certainty. (P1 would otherwise keep exploring turns until P2's final-turn
+    win chance drops below floating point precision, a lead of about 775 for TARGET = 200.)
 
     In P2's final turn, trailing by n with t banked and 7 fresh dice is the same as
     the start of P2's final turn trailing by n - t, which keeps that recursion small.
@@ -133,7 +137,8 @@ def Q_turn(S, T):
     table = Q_mid[S]
     if T not in table:
         stop = end_turn(S, stop_score(T))
-        if stop == 1:  # Rolling can't beat a certain win
+        p_bust = (4 / 6) ** dice_left(T)
+        if stop >= p_bust * end_turn(S, 0) + (1 - p_bust):  # Rolling can't beat stopping
             table[T] = stop
         else:
             table[T] = max(stop, play_value(S, T))
