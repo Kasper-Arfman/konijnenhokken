@@ -43,8 +43,12 @@ after the round in which someone reaches TARGET points; most points wins.
 
 == Bounding the turn
 
-    P2 stops as soon as stopping wins, so P2's turns can't go on forever.
-    P1 doesn't roll 7 fresh dice when at TARGET or more and LEAD_CAP ahead.
+    Everyone stops as soon as stopping wins with certainty, so turns can't go on forever:
+    P2 when reaching TARGET, P1 when so far ahead that P2's final-turn win chance is
+    below floating point precision (1 - Q == 1, a lead of about 775 for TARGET = 200).
+
+    In P2's final turn, trailing by n with t banked and 7 fresh dice is the same as
+    the start of P2's final turn trailing by n - t, which keeps that recursion small.
 
 This is pure Python and slow: use a small target, e.g. `python solve_1v1.py 20`.
 For TARGET = 200, solve_1v1_fast.py computes the same tables with numpy.
@@ -56,7 +60,6 @@ from game.rules import TURN_START, NUM_DICE, stop_score, canonical, rolls, possi
 
 TARGET = 200    # The game ends after the round in which someone reaches this
 TIE = 0.5       # Value of a tie
-LEAD_CAP = 150  # P1 doesn't roll 7 fresh dice when at TARGET or more and this far ahead
 TOL = 1e-12     # Convergence of the bust loop
 SOLUTION = 'solution_1v1.pkl'
 
@@ -123,14 +126,19 @@ def solve_turn(S):
 def Q_turn(S, T):
     """Q[S, T]: the better of stopping and rolling again"""
     T = canonical(T)
+    n, _, i = S
+    t = T[0]
+    if i == P2_FINAL and 0 < t < n and dice_left(T) == NUM_DICE:
+        return Q((n - t, 0, P2_FINAL))  # Trailing by n - t at the start of the turn
     table = Q_mid[S]
     if T not in table:
         stop = end_turn(S, stop_score(T))
-        if stop == 1 or not may_play(S, T):  # Rolling can't beat a certain win
+        if stop == 1:  # Rolling can't beat a certain win
             table[T] = stop
         else:
             table[T] = max(stop, play_value(S, T))
     return table[T]
+
 
 def play_value(S, T):
     """Win chance when rolling again: the best allocation of every roll"""
@@ -142,15 +150,6 @@ def play_value(S, T):
         else:
             value += p * end_turn(S, 0)  # Bust
     return value
-
-def may_play(S, T):
-    """P1 doesn't roll 7 fresh dice when at TARGET or more and LEAD_CAP ahead"""
-    A, B, i = S
-    if i != P1 or dice_left(T) < NUM_DICE:
-        return True
-    new_A = A + stop_score(T)
-    return new_A < TARGET or new_A - B < LEAD_CAP
-
 
 """ ---- Using the solution ---- """
 
@@ -168,19 +167,34 @@ def should_play(S, turn, T):
     """Roll again if that has a higher win chance than stopping"""
     return turn[canonical(T)] > end_turn(game_state(S), stop_score(T))
 
-def save(Q, path=SOLUTION):
+def save(Q, Q_final, path=SOLUTION):
+    """Q: (A, B, i) => Q[S] for A, B < TARGET and i in (P1, P2).
+    Q_final: n => Q[(n, 0, P2_FINAL)], for every n where 1 - Q[S] < 1 (the rest count as 0)"""
     with open(path, 'wb') as f:
-        pickle.dump(dict(target=TARGET, tie=TIE, lead_cap=LEAD_CAP, Q=Q), f)
+        pickle.dump(dict(target=TARGET, Q=Q, Qfinal=Q_final), f)
 
 def load(path=SOLUTION):
-    """Load a solution into Q_start, with the TARGET, TIE and LEAD_CAP it was solved for"""
-    global TARGET, TIE, LEAD_CAP
+    """Load a solution into Q_start, with the TARGET it was solved for"""
+    global TARGET
     with open(path, 'rb') as f:
         solution = pickle.load(f)
-    TARGET, TIE, LEAD_CAP = solution['target'], solution['tie'], solution['lead_cap']
+    TARGET = solution['target']
     Q_start.clear()
     Q_start.update(solution['Q'])
+    Q_start.update({(n, 0, P2_FINAL): q for n, q in solution['Qfinal'].items()})
     return Q_start
+
+def report(path=SOLUTION):
+    """Sanity checks of a saved solution"""
+    with open(path, 'rb') as f:
+        solution = pickle.load(f)
+    Q, Q_final = solution['Q'], solution['Qfinal']
+    p1_wins = Q[0, 0, P1]
+    print(f"Saved to {path}: keys {sorted(solution)}, target {solution['target']}")
+    print(f"Q: {len(Q)} entries (target * target * 2 = {solution['target'] ** 2 * 2})")
+    print(f"Qfinal: {len(Q_final)} entries, gaps {min(Q_final)} .. {max(Q_final)}, "
+          f"Qfinal[{max(Q_final)}] = {Q_final[max(Q_final)]:.3g}")
+    print(f"Q[(0, 0, 0)] = {p1_wins:.6f}: P1 win chance {p1_wins:.4%}, P2 win chance {1 - p1_wins:.4%}")
 
 
 def main():
@@ -188,10 +202,11 @@ def main():
     if len(sys.argv) > 1:
         TARGET = int(sys.argv[1])
 
-    p1_wins = Q((0, 0, P1))
-    save(dict(sorted(Q_start.items())))
-    print(f"Target {TARGET}: P1 win chance {p1_wins:.4%}, P2 win chance {1 - p1_wins:.4%}")
-    print(f"Saved {len(Q_start)} game states to {SOLUTION}")
+    Q((0, 0, P1))
+    Q_game = {S: q for S, q in sorted(Q_start.items()) if S[2] != P2_FINAL}
+    Q_final = {S[0]: q for S, q in sorted(Q_start.items()) if S[2] == P2_FINAL and 1 - q < 1}
+    save(Q_game, Q_final)
+    report()
 
 if __name__ == "__main__":
     # Every turn can lead to another turn, so the recursion goes very deep

@@ -31,7 +31,7 @@ from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 from game.rules import NUM_DICE, stop_score, rolls, possible_allocations
 import solve_1v1
-from solve_1v1 import P1, P2, P2_FINAL
+from solve_1v1 import P1, P2
 
 VALUE, BUST = 0, 1  # Channels of a value array: win chance, and chance that the turn busts
 
@@ -105,14 +105,15 @@ def best_per_group(values, starts, counts):
     result[BUST] = np.minimum.reduceat(np.where(chosen, values[BUST], np.inf), starts, axis=0)
     return result
 
-def solve_turns(stop_value, bust_value, max_bank):
+def solve_turns(stop_value, bust_value, max_bank, all_banks=False):
     """Solve a batch of independent turns, one per column.
 
     stop_value: (S, batch) value of stopping with turn score s (beyond S - 1 counts as S - 1)
     bust_value: (batch,)   value of busting
-    max_bank:   (batch,)   with more points banked, rolling 7 fresh dice isn't allowed
+    max_bank:   (batch,)   with more points banked, stopping must win with certainty
 
-    Returns Q[S] and the chance that the turn busts, both (batch,)
+    Returns Q[S] and the chance that the turn busts, both (batch,).
+    all_banks: instead return Q[S, (t, 0, 0, 0)] for t = 0 .. max(max_bank), (t, batch)
     """
     g = GRAPH
     S, batch = stop_value.shape
@@ -149,6 +150,10 @@ def solve_turns(stop_value, bust_value, max_bank):
             else:
                 values[:, boards, :k] = best(stop_t[:, boards], play)
 
+    if all_banks:
+        result = np.empty((max_bank[0] + 1, batch))
+        result[:, order] = fresh[VALUE, :max_bank[0] + 1]
+        return result
     result = np.empty((2, batch))
     result[:, order] = fresh[:, 0]
     return result[VALUE], result[BUST]
@@ -156,21 +161,30 @@ def solve_turns(stop_value, bust_value, max_bank):
 
 """ ---- Game states ---- """
 
-def final_turns(n_max):
-    """Q[(n, 0, 2)] for n = 0 .. n_max: P2's final turn, trailing by n"""
-    n = np.arange(1, n_max + 1)
+def final_turns(n_max=2000):
+    """Q[(n, 0, 2)] for n = 0 .. G: P2's final turn, trailing by n (Q[(0, 0, 2)] is nan).
+
+    With t banked and 7 fresh dice, trailing by n is the same as trailing by n - t
+    at the start of the turn, so a single turn trailing by n_max gives every n.
+    Beyond G, P2's win chance is so small that 1 - Q == 1 in floating point: those
+    are left out, and count as 0."""
     s = np.arange(n_max + MAX_RUN + 1)[:, None]
-    stop_value = np.where(s > n, 1.0, np.where(s == n, solve_1v1.TIE, 0.0))
-    q, _ = solve_turns(stop_value, np.zeros(len(n)), max_bank=n)
-    return np.concatenate([[np.nan], q])
+    stop_value = np.where(s > n_max, 1.0, np.where(s == n_max, solve_1v1.TIE, 0.0))
+    q = solve_turns(stop_value, np.zeros(1), np.array([n_max]), all_banks=True)[::-1, 0]
+    G = max(n for n in range(1, n_max + 1) if 1 - q[n] < 1)
+    assert G < n_max - MAX_RUN, "Increase n_max"
+    q[0] = np.nan
+    return q[:G + 1]
 
 def p1_turns(A, B, Q_p2, Q_final):
     """Stop values and max_bank for P1's turns at (A, B)"""
-    target = solve_1v1.TARGET
-    max_bank = np.maximum(target - 1 - A, B - A + solve_1v1.LEAD_CAP - 1)
+    target, G = solve_1v1.TARGET, len(Q_final) - 1
+    # With a larger lead than G, stopping wins with certainty
+    max_bank = np.maximum(target - 1 - A, B - A + G)
     new_A = A + np.arange(max_bank.max() + MAX_RUN + 1)[:, None]
-    gap = np.clip(new_A - B, 0, len(Q_final) - 1)
-    stop_value = np.where(new_A >= target, 1 - Q_final[gap], 1 - Q_p2[np.minimum(new_A, target - 1), B])
+    gap = new_A - B
+    final = np.where(gap <= G, Q_final[np.clip(gap, 0, G)], 0.0)
+    stop_value = np.where(new_A >= target, 1 - final, 1 - Q_p2[np.minimum(new_A, target - 1), B])
     return stop_value, max_bank
 
 def p2_turns(A, B, Q_p1):
@@ -204,8 +218,7 @@ def solve(processes=None, verbose=True):
     """Q for every game state, as in solve_1v1.py"""
     target, processes = solve_1v1.TARGET, processes or os.cpu_count()
 
-    # The largest gap P1 can leave behind for P2's final turn
-    Q_final = final_turns(max(target, solve_1v1.LEAD_CAP) + MAX_RUN)
+    Q_final = final_turns()
     Q_p1 = np.zeros((target, target))  # Q[(A, B, 0)]
     Q_p2 = np.zeros((target, target))  # Q[(A, B, 1)]
 
@@ -244,19 +257,16 @@ def solve(processes=None, verbose=True):
         for B in range(target):
             Q[A, B, P1] = float(Q_p1[A, B])
             Q[A, B, P2] = float(Q_p2[A, B])
-    for n in range(1, len(Q_final)):
-        Q[n, 0, P2_FINAL] = float(Q_final[n])
-    return Q
+    Q_final = {n: float(Q_final[n]) for n in range(1, len(Q_final))}
+    return Q, Q_final
 
 
 def main():
     if len(sys.argv) > 1:
         solve_1v1.TARGET = int(sys.argv[1])
-    Q = solve()
-    solve_1v1.save(Q)
-    p1_wins = Q[0, 0, P1]
-    print(f"Target {solve_1v1.TARGET}: P1 win chance {p1_wins:.4%}, P2 win chance {1 - p1_wins:.4%}")
-    print(f"Saved {len(Q)} game states to {solve_1v1.SOLUTION}")
+    Q, Q_final = solve()
+    solve_1v1.save(Q, Q_final)
+    solve_1v1.report()
 
 if __name__ == "__main__":
     main()
