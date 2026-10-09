@@ -29,7 +29,7 @@ import numpy as np
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
-from game.rules import NUM_DICE, stop_score, rolls, possible_allocations
+from game.rules import NUM_DICE, points_stop, rolls, allocations
 import solve_1v1
 from solve_1v1 import P1, P2
 
@@ -47,9 +47,9 @@ def build_turn_graph():
         board = todo.pop()
         if sum(board) == NUM_DICE:  continue
         for p, roll in rolls((0,) + board):
-            allocations = frozenset(T[1:] for T in possible_allocations((0,) + board, roll))
-            groups[board][allocations] += p
-            for new in allocations - boards:
+            options = frozenset(T[1:] for T in allocations((0,) + board, roll))
+            groups[board][options] += p
+            for new in options - boards:
                 boards.add(new)
                 todo.append(new)
 
@@ -65,10 +65,10 @@ def build_turn_graph():
         group_starts, probabilities, option_starts, options = [], [], [], []
         for board in layer:
             group_starts.append(len(probabilities))
-            for allocations, p in groups[board].items():
+            for allocated, p in groups[board].items():
                 probabilities.append(p)
                 option_starts.append(len(options))
-                options.extend(sorted(index[b] for b in allocations) or [bust])
+                options.extend(sorted(index[b] for b in allocated) or [bust])
         layers.append(dict(
             boards=np.array([index[b] for b in layer]),
             group_starts=np.array(group_starts),
@@ -80,7 +80,7 @@ def build_turn_graph():
 
     return dict(
         boards=boards,
-        score=np.array([stop_score((0,) + board) for board in boards]),
+        score=np.array([points_stop((0,) + board) for board in boards]),
         p_bust=np.array([(4 / 6) ** (NUM_DICE - sum(board)) for board in boards]),  # Chance the next roll busts
         full=np.array([index[b] for b in boards if sum(b) == NUM_DICE]),
         empty=index[(0, 0, 0)],

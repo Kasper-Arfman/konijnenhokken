@@ -1,66 +1,7 @@
-"""Find the 1v1 strategy that maximizes the chance of winning: Q = P(win) + TIE * P(tie)
-
-== Rules
-
-Players alternate turns. A round is P1's turn followed by P2's turn. The game ends
-after the round in which someone reaches TARGET points; most points wins.
-
-== States
-
-    S = (A, B, i)        Game state at the start of a turn. A, B: points of P1, P2
-                           i = 0: P1 to move
-                           i = 1: P2 to move
-                           i = 2: P2's final turn: P1 has reached TARGET. Only the gap
-                                  n = A - B matters, so this state is S = (n, 0, 2)
-    T = (t, r1, r2, c)   Turn state, as in solve_singleplayer.py
-
-    Q[S]      win chance of the player about to move
-    Q[S, T]   win chance of the player moving, midway through the turn
-
-    Every Q is from the point of view of the player moving. With TIE = 0.5, my Q
-    and my opponent's Q add up to 1, so when the turn passes to the opponent:
-        my value = 1 - Q[opponent's state]
-
-== Inside a turn: the same as solve_singleplayer.py, except for what stopping is worth
-
-    Q[S, T]    = max(end_turn(S, stop_score(T)), play[S, T])
-    play[S, T] = sum(p * max(Q[S, T'] for T' in allocations(T, roll))   (busting: end_turn(S, 0))
-                 for p, roll in rolls(T))
-    Q[S]       = play[S, TURN_START]                                    (you must roll)
-
-== Ending a turn with turn score s (s = 0 when you bust)
-
-    P1:           1 - Q[(A + s, B, 1)]
-    P2:           1 if B + s >= TARGET (P2 wins), else 1 - Q[(A, B + s, 0)]
-    P2's final:   1 if s > n, TIE if s == n, 0 if s < n
-
-== The bust loop
-
-    Every turn that doesn't bust increases A + B. Busting doesn't:
-        Q[(A, B, 0)]  --P1 busts-->  Q[(A, B, 1)]  --P2 busts-->  Q[(A, B, 0)]
-    Plain recursion would go around this loop forever, so solve_loop() solves
-    the pair with value iteration: guess one, compute the other, repeat.
-
-== Bounding the turn
-
-    Rolling with k dice left busts with chance p_bust = (4/6)^k (no 1 or 2). Even if
-    every other roll won with certainty, rolling would be worth at most
-        p_bust * end_turn(S, 0) + (1 - p_bust)
-    so once stopping is worth at least that, stopping is optimal without looking further.
-    This is exact, and it bounds the turns: as the turn score grows, stopping soon wins
-    with near certainty. (P1 would otherwise keep exploring turns until P2's final-turn
-    win chance drops below floating point precision, a lead of about 775 for TARGET = 200.)
-
-    In P2's final turn, trailing by n with t banked and 7 fresh dice is the same as
-    the start of P2's final turn trailing by n - t, which keeps that recursion small.
-
-This is pure Python and slow: use a small target, e.g. `python solve_1v1.py 20`.
-For TARGET = 200, solve_1v1_fast.py computes the same tables with numpy.
-"""
 import pickle
 import sys
 import threading
-from game.rules import TURN_START, NUM_DICE, stop_score, canonical, rolls, possible_allocations, dice_left
+from game.rules import TURN_START, NUM_DICE, canonical, dice_left, points_stop, rolls, allocations
 
 TARGET = 200    # The game ends after the round in which someone reaches this
 TIE = 0.5       # Value of a tie
@@ -69,11 +10,71 @@ SOLUTION = 'solution_1v1.pkl'
 
 P1, P2, P2_FINAL = 0, 1, 2
 
-Q_start = {}  # S => Q[S]
-Q_mid = {}    # S => {T: Q[S, T]}, only while solving the turn of S
+_Q = {}       # Cache of game states:  S => Q(S)
+_Q_turn = {}  # Cache of turn states:  S => {T: Q_play(S, T)}, only while solving the turn of S
 
 
-""" ---- Game states ---- """
+""" ---- Turn states: the same as solve_maxpoints, but valued in win chance ---- """
+
+def Q_turn(S, T):
+    """Quality of turn state T, in game state S"""
+    return max(Q_stop(S, T), Q_play(S, T))
+
+def Q_stop(S, T):
+    return end_turn(S, points_stop(T))
+
+def Q_play(S, T):
+    T = canonical(T)
+    n, _, i = S
+    if i == P2_FINAL and 0 < T[0] < n and dice_left(T) == NUM_DICE:
+        return Q((n - T[0], 0, P2_FINAL))  # Same as starting the final turn trailing by n - t
+
+    table = _Q_turn[S]
+    if T not in table:
+        if not worth_rolling(S, T):  table[T] = 0  # Base case: stopping is better
+        else:                        table[T] = sum(p * Q_roll(S, T, roll) for p, roll in rolls(T))
+    return table[T]
+
+def Q_roll(S, T, roll):
+    return max((Q_turn(S, T2) for T2 in allocations(T, roll)), default=Q_bust(S))
+
+def Q_bust(S):
+    return end_turn(S, 0)
+
+def worth_rolling(S, T):
+    """Even if every roll that doesn't bust won the game, rolling must beat stopping"""
+    p_bust = (4/6) ** dice_left(T)
+    return Q_stop(S, T) < p_bust * Q_bust(S) + (1 - p_bust)
+
+
+""" ---- Game states: S = (A, B, i), the scores and whose turn it is ---- """
+
+def Q(S):
+    """Win chance of the player about to start a turn in game state S"""
+    S = game_state(S)
+    if S not in _Q:
+        if S[2] == P2_FINAL:  _Q[S] = solve_turn(S)  # The game ends after this turn
+        else:                 solve_loop(*S[:2])     # P1 and P2 depend on each other through busts
+    return _Q[S]
+
+def solve_turn(S):
+    """At the start of a turn you must roll"""
+    _Q_turn[S] = {}  # Start over: the bust value may have changed (see solve_loop)
+    value = Q_play(S, TURN_START)
+    del _Q_turn[S]
+    return value
+
+def solve_loop(A, B):
+    """Q((A, B, P1)) and Q((A, B, P2)) depend on each other through busts.
+    Value iteration: guess Q((A, B, P2)), solve both turns, and repeat until stable"""
+    p1, p2 = (A, B, P1), (A, B, P2)
+    _Q[p2] = 0.5  # Guess
+    while True:
+        _Q[p1] = solve_turn(p1)  # When P1 busts, this uses _Q[p2]
+        new = solve_turn(p2)     # When P2 busts, this uses _Q[p1]
+        converged = abs(new - _Q[p2]) < TOL
+        _Q[p2] = new
+        if converged:  break
 
 def game_state(S):
     """P2's turn after P1 reached TARGET is a final turn, where only the gap matters"""
@@ -82,112 +83,52 @@ def game_state(S):
         return (A - B, 0, P2_FINAL)
     return S
 
-def Q(S):
-    """Q[S]: win chance of the player about to move in game state S"""
-    S = game_state(S)
-    A, B, i = S
-    if S not in Q_start:
-        if S[2] == P2_FINAL:
-            Q_start[S] = solve_turn(S)  # No loop: the game ends after this turn
-            del Q_mid[S]  # Only Q[S] is needed from now on
-        else:
-            solve_loop(A, B)
-    return Q_start[S]
-
-def solve_loop(A, B):
-    """Q[(A, B, 0)] and Q[(A, B, 1)] depend on each other through busts.
-    Value iteration: guess Q[(A, B, 1)], compute both turns, and repeat until stable"""
-    p1, p2 = (A, B, P1), (A, B, P2)
-    Q_start[p2] = 0.5  # Guess
-    while True:
-        Q_start[p1] = solve_turn(p1)  # When P1 busts, this uses Q_start[p2]
-        new = solve_turn(p2)          # When P2 busts, this uses Q_start[p1]
-        converged = abs(new - Q_start[p2]) < TOL
-        Q_start[p2] = new
-        if converged:  break
-    del Q_mid[p1], Q_mid[p2]
-
 def end_turn(S, s):
-    """Value for the player moving in S of ending the turn with turn score s (bust: s = 0)"""
+    """Win chance for the player moving in S of ending the turn with s points (bust: s = 0)"""
     A, B, i = S
     if i == P1:
         return 1 - Q((A + s, B, P2))
     if i == P2:
-        if B + s >= TARGET:
-            return 1  # The round is complete and P2 reached TARGET: P2 wins, since A < TARGET
+        if B + s >= TARGET:  return 1  # P2 completes the round on TARGET, while A < TARGET
         return 1 - Q((A, B + s, P1))
     n = A  # P2's final turn: the game is over
     return 1 if s > n else TIE if s == n else 0
 
 
-""" ---- Turn states (S is fixed) ---- """
-
-def solve_turn(S):
-    """Q[S]: at the start of a turn you must roll"""
-    Q_mid[S] = {}  # Start over: the bust value may have changed (see solve_loop)
-    return play_value(S, TURN_START)
-
-def Q_turn(S, T):
-    """Q[S, T]: the better of stopping and rolling again"""
-    T = canonical(T)
-    n, _, i = S
-    t = T[0]
-    if i == P2_FINAL and 0 < t < n and dice_left(T) == NUM_DICE:
-        return Q((n - t, 0, P2_FINAL))  # Trailing by n - t at the start of the turn
-    table = Q_mid[S]
-    if T not in table:
-        stop = end_turn(S, stop_score(T))
-        p_bust = (4 / 6) ** dice_left(T)
-        if stop >= p_bust * end_turn(S, 0) + (1 - p_bust):  # Rolling can't beat stopping
-            table[T] = stop
-        else:
-            table[T] = max(stop, play_value(S, T))
-    return table[T]
-
-
-def play_value(S, T):
-    """Win chance when rolling again: the best allocation of every roll"""
-    value = 0
-    for p, roll in rolls(T):
-        options = possible_allocations(T, roll)
-        if options:
-            value += p * max(Q_turn(S, T2) for T2 in options)
-        else:
-            value += p * end_turn(S, 0)  # Bust
-    return value
-
 """ ---- Using the solution ---- """
 
 def turn_values(S):
-    """Q[S, T] for every state of the turn in game state S (needs a solved Q_start)"""
+    """Q_turn(S, T) for every turn state T reached in game state S (needs a solved _Q)"""
     S = game_state(S)
-    solve_turn(S)
-    return Q_mid.pop(S)
+    _Q_turn[S] = {}
+    Q_play(S, TURN_START)
+    table = _Q_turn.pop(S)
+    return {T: max(Q_stop(S, T), q) for T, q in table.items()}
 
 def best_allocation(turn, T, roll):
     """The allocation with the highest win chance. turn: from turn_values(S)"""
-    return max(possible_allocations(T, roll), key=lambda T2: turn[canonical(T2)])
+    return max(allocations(T, roll), key=lambda T2: turn[canonical(T2)])
 
 def should_play(S, turn, T):
     """Roll again if that has a higher win chance than stopping"""
-    return turn[canonical(T)] > end_turn(game_state(S), stop_score(T))
+    return turn[canonical(T)] > end_turn(game_state(S), points_stop(T))
 
 def save(Q, Q_final, path=SOLUTION):
-    """Q: (A, B, i) => Q[S] for A, B < TARGET and i in (P1, P2).
-    Q_final: n => Q[(n, 0, P2_FINAL)], for every n where 1 - Q[S] < 1 (the rest count as 0)"""
+    """Q: (A, B, i) => Q(S) for A, B < TARGET and i in (P1, P2).
+    Q_final: n => Q((n, 0, P2_FINAL)), for every n where Q(S) > 0 (the rest count as 0)"""
     with open(path, 'wb') as f:
         pickle.dump(dict(target=TARGET, Q=Q, Qfinal=Q_final), f)
 
 def load(path=SOLUTION):
-    """Load a solution into Q_start, with the TARGET it was solved for"""
+    """Load a solution into _Q, with the TARGET it was solved for"""
     global TARGET
     with open(path, 'rb') as f:
         solution = pickle.load(f)
     TARGET = solution['target']
-    Q_start.clear()
-    Q_start.update(solution['Q'])
-    Q_start.update({(n, 0, P2_FINAL): q for n, q in solution['Qfinal'].items()})
-    return Q_start
+    _Q.clear()
+    _Q.update(solution['Q'])
+    _Q.update({(n, 0, P2_FINAL): q for n, q in solution['Qfinal'].items()})
+    return _Q
 
 def report(path=SOLUTION):
     """Sanity checks of a saved solution"""
@@ -207,9 +148,9 @@ def main():
     if len(sys.argv) > 1:
         TARGET = int(sys.argv[1])
 
-    Q((0, 0, P1))
-    Q_game = {S: q for S, q in sorted(Q_start.items()) if S[2] != P2_FINAL}
-    Q_final = {S[0]: q for S, q in sorted(Q_start.items()) if S[2] == P2_FINAL and 1 - q < 1}
+    Q((0, 0, P1))  # This call builds the cache (_Q)
+    Q_game = {S: q for S, q in sorted(_Q.items()) if S[2] != P2_FINAL}
+    Q_final = {S[0]: q for S, q in sorted(_Q.items()) if S[2] == P2_FINAL and q > 0}
     save(Q_game, Q_final)
     report()
 

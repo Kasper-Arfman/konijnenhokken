@@ -2,7 +2,7 @@ from collections import Counter
 from game.ui import UI
 from game.state import UserState
 from game.ui_cmd import CommandUI
-from game.rules import possible_allocations, stop_score, canonical
+from game.rules import allocations, points_stop, canonical
 
 class User:
 
@@ -46,8 +46,8 @@ class QBot(User):
     def decide_allocation(self, gs: UserState):
         """Pick the allocation with the highest expected score"""
         roll = Counter(gs.roll)
-        state_value = lambda state: max(stop_score(state), self.play_value(state))
-        best = max(possible_allocations(gs.state, roll), key=state_value)
+        state_value = lambda state: max(points_stop(state), self.play_value(state))
+        best = max(allocations(gs.state, roll), key=state_value)
         return self.state_difference(best, gs.state)
 
     def decide_continue(self, gs: UserState):

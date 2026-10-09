@@ -8,7 +8,7 @@ from kivy.properties import NumericProperty, StringProperty, ObjectProperty, Dic
 import pickle
 import os
 from kivy.graphics import Color, RoundedRectangle
-from game.rules import stop_score, canonical, possible_allocations
+from game.rules import points_stop, canonical, allocations
 
 Config.set('graphics', 'width', '327')
 Config.set('graphics', 'height', '720')
@@ -19,8 +19,8 @@ with open(filepath, 'rb') as f:
 
 def decide_allocation(state, roll: dict):
     """Pick the allocation with the highest expected score"""
-    state_value = lambda state: max(stop_score(state), PLAY_VALUE[canonical(state)])
-    return max(possible_allocations(state, roll), key=state_value)
+    state_value = lambda state: max(points_stop(state), PLAY_VALUE[canonical(state)])
+    return max(allocations(state, roll), key=state_value)
 
 class CheatApp(App):
     def build(self):
@@ -112,14 +112,14 @@ class CheatSheet(BoxLayout):
 
         # On a completed hand
         if sum(self.dst[1:]) == 7:
-            self.dst = [stop_score(self.dst), 0, 0, 0]
+            self.dst = [points_stop(self.dst), 0, 0, 0]
 
 
         # print(f"{self.dst = }")
 
         # - Decide play
         dst = tuple(self.dst)
-        self.play = PLAY_VALUE[dst] > stop_score(dst)
+        self.play = PLAY_VALUE[dst] > points_stop(dst)
 
         # - Show the markings
         self.update_sliders()
@@ -130,7 +130,7 @@ class CheatSheet(BoxLayout):
         state = tuple(self.field)
         try:
             self.play_value = PLAY_VALUE[state]
-            self.stop_value = stop_score(state)
+            self.stop_value = points_stop(state)
         except KeyError:
             self.play_value = -1
             self.stop_value = -1

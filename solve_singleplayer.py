@@ -16,7 +16,7 @@ See SOLVER.md for a longer explanation.
 """
 import pickle
 import sys
-from game.rules import TURN_START, stop_score, canonical, rolls, possible_allocations
+from game.rules import TURN_START, points_stop, canonical, rolls, allocations
 
 DEPTH = 201  # Always stop with this many points banked (rolling on stops paying off above 100)
 SOLUTION = 'solution_singleplayer.pkl'
@@ -26,7 +26,7 @@ play_values = {}  # T => expected score when rolling again
 
 def E(state):
     """Expected score of a state: the better of stopping and rolling again"""
-    return max(stop_score(state), play_value(state))
+    return max(points_stop(state), play_value(state))
 
 def play_value(state):
     """Expected score when rolling again"""
@@ -40,19 +40,19 @@ def play_value(state):
 
 def roll_value(state, roll):
     """Expected score after a roll: the value of the best allocation, 0 if you bust"""
-    return max((E(s) for s in possible_allocations(state, roll)), default=0)
+    return max((E(s) for s in allocations(state, roll)), default=0)
 
 
 """ ---- Using the solution ---- """
 
 def best_allocation(Q, state, roll):
     """The allocation with the highest expected score"""
-    value = lambda s: max(stop_score(s), Q[canonical(s)])
-    return max(possible_allocations(state, roll), key=value)
+    value = lambda s: max(points_stop(s), Q[canonical(s)])
+    return max(allocations(state, roll), key=value)
 
 def should_play(Q, state):
     """Roll again if that has a higher expected score than stopping"""
-    return Q[canonical(state)] > stop_score(state)
+    return Q[canonical(state)] > points_stop(state)
 
 def load(path=SOLUTION):
     with open(path, 'rb') as f:

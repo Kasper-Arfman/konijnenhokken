@@ -18,7 +18,7 @@ FACES = (1, 2, 3, 4, 5, 6)
 TURN_START = (0, 0, 0, 0)
 
 
-def stop_score(state):
+def points_stop(state):
     """Points you bank by stopping now"""
     t, r1, r2, c = state
     return t + (r1 + 2*r2) * (c + 1)
@@ -31,7 +31,7 @@ def canonical(state):
     """A full board is the same as banking the run and rolling 7 fresh dice:
     (100, 0, 4, 3) is the same state as (132, 0, 0, 0)"""
     if dice_left(state) == 0:
-        return (stop_score(state), 0, 0, 0)
+        return (points_stop(state), 0, 0, 0)
     return state
 
 
@@ -59,7 +59,7 @@ def probability(roll):
     return orders / len(FACES)**num_dice
 
 
-def possible_allocations(state, roll):
+def allocations(state, roll):
     """All the states you can move to after a roll. No states: you bust.
 
     - You must keep at least one rabbit (a 1 or a 2)

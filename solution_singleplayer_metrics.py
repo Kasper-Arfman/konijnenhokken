@@ -1,6 +1,6 @@
 """Investigate the single-player solution (run solve_singleplayer.py first)"""
 from collections import defaultdict
-from game.rules import TURN_START, stop_score, canonical, rolls, dice_left
+from game.rules import TURN_START, points_stop, canonical, rolls, dice_left
 from solve_singleplayer import load, best_allocation, should_play
 
 
@@ -27,7 +27,7 @@ def score_distribution(Q):
             if should_play(Q, chosen):
                 rolling[canonical(chosen)] += p_state * p
             else:
-                final[stop_score(chosen)] += p_state * p
+                final[points_stop(chosen)] += p_state * p
     return dict(sorted(final.items()))
 
 def fresh_dice_limit(Q):
